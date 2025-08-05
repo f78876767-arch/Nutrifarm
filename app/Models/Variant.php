@@ -4,10 +4,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+
 class Variant extends Model
 {
     use HasFactory;
-    protected $fillable = ['product_id', 'name', 'value', 'price', 'stock'];
+    protected $fillable = [
+        'product_id', 'name', 'value', 'unit', 'custom_unit', 'price', 'stock'
+    ];
 
     public function product()
     {

@@ -1,0 +1,28 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "nutrifarm_mobile",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "nutrifarm_mobile (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "nutrifarm_mobile (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "nutrifarm_mobile (iOS)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "ios"
+        }
+    ]
+}

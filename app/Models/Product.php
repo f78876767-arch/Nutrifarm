@@ -10,7 +10,11 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'description', 'price', 'stock', 'image',
+        'name', 'description', 'price', 'stock', 'image', 'active', 'discount_price',
+    ];
+
+    protected $casts = [
+        'active' => 'boolean',
     ];
 
     public function orderProducts()
