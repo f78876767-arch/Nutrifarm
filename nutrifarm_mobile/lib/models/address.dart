@@ -1,0 +1,83 @@
+class Address {
+  final String id;
+  final String label;
+  final String fullAddress;
+  final String? detailAddress;
+  final double? latitude;
+  final double? longitude;
+  final String? recipientName;
+  final String? phoneNumber;
+  final bool isDefault;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  Address({
+    required this.id,
+    required this.label,
+    required this.fullAddress,
+    this.detailAddress,
+    this.latitude,
+    this.longitude,
+    this.recipientName,
+    this.phoneNumber,
+    this.isDefault = false,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'label': label,
+    'full_address': fullAddress,
+    'detail_address': detailAddress,
+    'latitude': latitude,
+    'longitude': longitude,
+    'recipient_name': recipientName,
+    'phone_number': phoneNumber,
+    'is_default': isDefault,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+  };
+
+  static Address fromJson(Map<String, dynamic> json) => Address(
+    id: json['id'].toString(),
+    label: json['label'] ?? '',
+    fullAddress: json['full_address'] ?? '',
+    detailAddress: json['detail_address'],
+    latitude: json['latitude']?.toDouble(),
+    longitude: json['longitude']?.toDouble(),
+    recipientName: json['recipient_name'],
+    phoneNumber: json['phone_number'],
+    isDefault: json['is_default'] ?? false,
+    createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
+    updatedAt: DateTime.parse(json['updated_at'] ?? DateTime.now().toIso8601String()),
+  );
+
+  Address copyWith({
+    String? id,
+    String? label,
+    String? fullAddress,
+    String? detailAddress,
+    double? latitude,
+    double? longitude,
+    String? recipientName,
+    String? phoneNumber,
+    bool? isDefault,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Address(
+      id: id ?? this.id,
+      label: label ?? this.label,
+      fullAddress: fullAddress ?? this.fullAddress,
+      detailAddress: detailAddress ?? this.detailAddress,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      recipientName: recipientName ?? this.recipientName,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      isDefault: isDefault ?? this.isDefault,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+}

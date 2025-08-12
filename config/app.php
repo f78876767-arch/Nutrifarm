@@ -173,11 +173,6 @@ return [
         App\Providers\AuthServiceProvider::class,
         // App\Providers\BroadcastServiceProvider::class,
 
-        /*
-         * Filament Panel Providers...
-         */
-        App\Providers\Filament\AdminPanelProvider::class,
-        App\Providers\Filament\TestPanelProvider::class,
     ],
 
 ];

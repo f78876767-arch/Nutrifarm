@@ -1,0 +1,196 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Models\EmailVerification;
+use Carbon\Carbon;
+
+class EmailVerificationController extends Controller
+{
+    /**
+     * Send verification email with auto-generated code
+     */
+    public function sendVerificationEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $email = $request->email;
+
+        try {
+            // Generate 6-digit verification code
+            $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            
+            // Delete old verification codes for this email
+            EmailVerification::where('email', $email)->delete();
+
+            // Create new verification record
+            EmailVerification::create([
+                'email' => $email,
+                'verification_code' => $code,
+                'expires_at' => now()->addMinutes(10),
+            ]);
+
+            // Send email using the same Mailable as AuthController
+            Mail::to($email)->send(new \App\Mail\VerificationCodeMail($code, $email));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Verification code sent to your email',
+                'expires_in_minutes' => 10
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send verification email',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+                'expires_at' => Carbon::now()->addMinutes(10) // Code expires in 10 minutes
+            ]);
+
+            // Send email
+            Mail::send('emails.verification', [
+                'code' => $request->verification_code,
+                'email' => $request->email
+            ], function ($message) use ($request) {
+                $message->to($request->email)
+                        ->subject('Email Verification Code - Nutrifarm');
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Verification email sent successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send verification email',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Verify email code
+     */
+    public function verifyEmailCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'verification_code' => 'required|string|size:4'
+        ]);
+
+        try {
+            $verification = EmailVerification::where('email', $request->email)
+                ->where('verification_code', $request->verification_code)
+                ->where('is_verified', false)
+                ->where('expires_at', '>', Carbon::now())
+                ->first();
+
+            if ($verification) {
+                // Mark as verified and delete the record
+                $verification->update(['is_verified' => true]);
+                $verification->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Email verified successfully'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid or expired verification code'
+                ], 400);
+            }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Verification failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate and send new verification code
+     */
+    public function generateAndSendCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        try {
+            // Generate a new 4-digit code
+            $verificationCode = EmailVerification::generateCode();
+
+            // Delete old verification codes for this email
+            EmailVerification::where('email', $request->email)->delete();
+
+            // Create new verification record
+            EmailVerification::create([
+                'email' => $request->email,
+                'verification_code' => $verificationCode,
+                'is_verified' => false,
+                'expires_at' => Carbon::now()->addMinutes(10)
+            ]);
+
+            // Send email
+            Mail::send('emails.verification', [
+                'code' => $verificationCode,
+                'email' => $request->email
+            ], function ($message) use ($request) {
+                $message->to($request->email)
+                        ->subject('Email Verification Code - Nutrifarm');
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'New verification code sent successfully',
+                'data' => [
+                    'expires_in_minutes' => 10
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send verification code',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Check if email has been verified
+     */
+    public function checkVerificationStatus(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        // Check if there's any active verification code for this email
+        $activeVerification = EmailVerification::where('email', $request->email)
+            ->where('is_verified', false)
+            ->where('expires_at', '>', Carbon::now())
+            ->exists();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'has_active_verification' => $activeVerification,
+                'email' => $request->email
+            ]
+        ]);
+    }
+}

@@ -14,9 +14,14 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     // Relationships
-    public function carts()
+    public function cartItems()
     {
-        return $this->hasMany(Cart::class);
+        return $this->hasMany(CartItem::class);
+    }
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
     }
 
     public function orders()
@@ -53,6 +58,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'address',
     ];
 
     /**

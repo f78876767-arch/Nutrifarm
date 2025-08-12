@@ -1,0 +1,95 @@
+{
+  "design_system": {
+    "theme": {
+      "background_color": "#1C1C1E",
+      "primary_text_color": "#FFFFFF",
+      "secondary_text_color": "#B0B0B0",
+      "primary_button_color": "#3A3A3C",
+      "primary_button_text_color": "#FFFFFF",
+      "secondary_button_color": "#FFFFFF",
+      "secondary_button_text_color": "#1C1C1E"
+    },
+    "typography": {
+      "font_family": "San Francisco, Helvetica Neue, Arial, sans-serif",
+      "heading_font_size": "24-32px",
+      "subheading_font_size": "14-16px",
+      "button_font_size": "16px",
+      "text_alignment": "center",
+      "heading_weight": "bold",
+      "subheading_weight": "normal"
+    },
+    "layout": {
+      "vertical_alignment": "centered",
+      "padding": {
+        "horizontal": "24px",
+        "vertical": "32px"
+      },
+      "spacing": {
+        "between_elements": "16px",
+        "between_buttons": "12px"
+      },
+      "section_order": [
+        "subheading",
+        "main_heading",
+        "product_preview_carousel",
+        "button_group",
+        "footer_text_links"
+      ]
+    },
+    "components": {
+      "subheading": {
+        "type": "text",
+        "style": "caption",
+        "alignment": "center",
+        "color": "secondary_text_color"
+      },
+      "main_heading": {
+        "type": "text",
+        "style": "headline",
+        "alignment": "center",
+        "color": "primary_text_color",
+        "line_height": "1.4",
+        "max_width": "90%"
+      },
+      "product_preview_carousel": {
+        "type": "image_carousel",
+        "item_shape": "square",
+        "item_border_radius": "8px",
+        "item_spacing": "8px",
+        "scroll_behavior": "horizontal",
+        "max_height": "100px"
+      },
+      "button_group": {
+        "layout": "vertical",
+        "buttons": [
+          {
+            "label": "Create an account",
+            "style": "primary"
+          },
+          {
+            "label": "Sign in",
+            "style": "secondary"
+          }
+        ]
+      },
+      "footer_text_links": {
+        "type": "text_block",
+        "style": "caption",
+        "color": "secondary_text_color",
+        "alignment": "center",
+        "links": {
+          "Shopx Shopping Service": "https://example.com",
+          "Klarna’s Privacy Policy": "https://example.com"
+        }
+      }
+    },
+    "shadows": {
+      "button_shadow": "none",
+      "card_shadow": "none"
+    },
+    "border_radius": {
+      "button": "12px",
+      "carousel_items": "8px"
+    }
+  }
+}

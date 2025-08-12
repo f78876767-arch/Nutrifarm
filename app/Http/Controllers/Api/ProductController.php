@@ -10,12 +10,12 @@ class ProductController extends Controller
 {
     public function index()
     {
-        return Product::all();
+        return Product::with(['categories', 'variants'])->get();
     }
 
     public function show($id)
     {
-        return Product::findOrFail($id);
+        return Product::with(['categories', 'variants'])->findOrFail($id);
     }
 
     public function store(Request $request)

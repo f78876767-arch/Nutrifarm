@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
         // Generate 5 random users (besides admin/staff)
         $randomUsers = \App\Models\User::factory()->count(5)->create();
 
+        // Create additional system users
         $superAdmin = \App\Models\User::updateOrCreate(
             ['email' => 'superadmin@example.com'],
             [
@@ -30,23 +31,9 @@ class DatabaseSeeder extends Seeder
                 'password' => bcrypt('password'),
             ]
         );
-        $staff = \App\Models\User::updateOrCreate(
-            ['email' => 'staff@example.com'],
-            [
-                'name' => 'Staff User',
-                'password' => bcrypt('password'),
-            ]
-        );
-
-        $superAdminRole = \App\Models\Role::updateOrCreate(['name' => 'super_admin']);
-        $adminRole = \App\Models\Role::updateOrCreate(['name' => 'admin']);
-        $staffRole = \App\Models\Role::updateOrCreate(['name' => 'staff']);
-
-        $superAdmin->roles()->sync([$superAdminRole->id]);
-        $admin->roles()->sync([$adminRole->id]);
-        $staff->roles()->sync([$staffRole->id]);
 
         $this->call([
+            RoleSeeder::class,
             ProductSeeder::class,
         ]);
 

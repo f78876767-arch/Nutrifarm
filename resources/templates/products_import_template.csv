@@ -1,0 +1,3 @@
+name,description,price,stock_quantity,category,sku,status,weight,dimensions,image_url
+Sample Product 1,This is a sample product description,29.99,100,Electronics,SKU001,active,1.2,10x5x3,https://example.com/image1.jpg
+Sample Product 2,Another sample product,15.50,50,Home & Garden,SKU002,active,0.8,8x4x2,https://example.com/image2.jpg
