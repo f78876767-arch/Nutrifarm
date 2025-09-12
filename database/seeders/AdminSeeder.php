@@ -61,34 +61,34 @@ class AdminSeeder extends Seeder
             [
                 'name' => 'Fresh Tomatoes',
                 'description' => 'Juicy red tomatoes, perfect for salads and cooking',
-                'price' => 4.99,
-                'stock' => 50,
-                'active' => true,
+                'price' => 4990,
+                'stock_quantity' => 50,
+                'is_active' => true,
                 'categories' => [$vegetableCategory->id, $organicCategory->id]
             ],
             [
                 'name' => 'Organic Lettuce',
                 'description' => 'Crisp organic lettuce leaves',
-                'price' => 3.49,
-                'stock' => 30,
-                'active' => true,
+                'price' => 3490,
+                'stock_quantity' => 30,
+                'is_active' => true,
                 'categories' => [$vegetableCategory->id, $organicCategory->id]
             ],
             [
                 'name' => 'Sweet Apples',
                 'description' => 'Crisp and sweet red apples',
-                'price' => 6.99,
-                'discount_price' => 5.99,
-                'stock' => 25,
-                'active' => true,
+                'price' => 6990,
+                'discount_price' => 5990,
+                'stock_quantity' => 25,
+                'is_active' => true,
                 'categories' => [$fruitCategory->id]
             ],
             [
                 'name' => 'Fresh Carrots',
                 'description' => 'Orange carrots, rich in beta-carotene',
-                'price' => 2.99,
-                'stock' => 40,
-                'active' => true,
+                'price' => 2990,
+                'stock_quantity' => 40,
+                'is_active' => true,
                 'categories' => [$vegetableCategory->id]
             ],
         ];
@@ -97,7 +97,7 @@ class AdminSeeder extends Seeder
             $categories = $productData['categories'];
             unset($productData['categories']);
             
-            $product = Product::firstOrCreate(['name' => $productData['name']], $productData);
+            $product = Product::updateOrCreate(['name' => $productData['name']], $productData);
             $product->categories()->sync($categories);
         }
 

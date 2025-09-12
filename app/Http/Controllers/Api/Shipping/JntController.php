@@ -33,9 +33,17 @@ class JntController extends Controller
 
     public function tariff(Request $request, JntService $svc)
     {
-        // J&T sample uses form params; adjust keys per docs
-        $payload = $request->all();
+        // Validate required fields per J&T docs
+        $payload = $request->validate([
+            'sendSiteCode' => 'required|string',
+            'destAreaCode' => 'required|string',
+            'weight' => 'required|numeric',
+        ]);
         $resp = $svc->tariffInquiry($payload);
+        // If upstream failed, surface a 502 so HTTP logs mirror reality
+        if (is_array($resp) && isset($resp['is_success']) && $resp['is_success'] === 'false') {
+            return response()->json($resp, 502);
+        }
         return response()->json($resp);
     }
 

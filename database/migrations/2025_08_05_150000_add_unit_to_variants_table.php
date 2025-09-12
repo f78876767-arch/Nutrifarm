@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (!Schema::hasTable('variants')) {
+            // Table not created yet; skip and let later migrations handle
+            return;
+        }
         if (!Schema::hasColumn('variants', 'unit')) {
             Schema::table('variants', function (Blueprint $table) {
                 $table->string('unit', 32)->nullable()->after('value');
@@ -21,15 +25,20 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (Schema::hasColumn('variants', 'custom_unit')) {
-            Schema::table('variants', function (Blueprint $table) {
-                $table->dropColumn('custom_unit');
-            });
+        if (!Schema::hasTable('variants')) {
+            return;
         }
-        if (Schema::hasColumn('variants', 'unit')) {
-            Schema::table('variants', function (Blueprint $table) {
-                $table->dropColumn('unit');
-            });
-        }
+        Schema::table('variants', function (Blueprint $table) {
+            $drops = [];
+            if (Schema::hasColumn('variants', 'custom_unit')) {
+                $drops[] = 'custom_unit';
+            }
+            if (Schema::hasColumn('variants', 'unit')) {
+                $drops[] = 'unit';
+            }
+            if (!empty($drops)) {
+                $table->dropColumn($drops);
+            }
+        });
     }
 };

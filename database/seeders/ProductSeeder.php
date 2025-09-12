@@ -13,34 +13,39 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Cuka Apel',
                 'description' => 'Cuka apel organik untuk kesehatan.',
+                // legacy price kept for compatibility, UI should use variants
                 'price' => 35000,
-                'stock' => 100,
-                'image' => null,
+                'stock_quantity' => 100,
+                'image_path' => null,
+                'is_active' => true,
             ],
             [
                 'name' => 'Virgin Coconut Oil',
                 'description' => 'Minyak kelapa murni multifungsi.',
                 'price' => 50000,
-                'stock' => 80,
-                'image' => null,
+                'stock_quantity' => 80,
+                'image_path' => null,
+                'is_active' => true,
             ],
             [
                 'name' => 'Madu Hutan',
                 'description' => 'Madu asli dari hutan tropis.',
                 'price' => 60000,
-                'stock' => 60,
-                'image' => null,
+                'stock_quantity' => 60,
+                'image_path' => null,
+                'is_active' => true,
             ],
             [
                 'name' => 'Teh Herbal',
                 'description' => 'Teh herbal alami untuk relaksasi.',
                 'price' => 25000,
-                'stock' => 120,
-                'image' => null,
+                'stock_quantity' => 120,
+                'image_path' => null,
+                'is_active' => true,
             ],
         ];
         foreach ($products as $data) {
-            Product::create($data);
+            Product::updateOrCreate(['name' => $data['name']], $data);
         }
     }
 }

@@ -62,5 +62,9 @@ return [
             'tariff' => env('JNT_PATH_TARIFF', '/jandt_track/inquiry.action'),
             'track' => env('JNT_PATH_TRACK', '/jandt-order-ifd-web/track/trackAction!tracking.action'),
         ],
+    'verify_ssl' => env('JNT_VERIFY_SSL', true),
+    'sign_mode' => env('JNT_SIGN_MODE', 'hex'), // hex | raw
+    'sign_key' => env('JNT_SIGN_KEY'),
+    'customer_name' => env('JNT_CUSTOMER_NAME'),
     ],
 ];

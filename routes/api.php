@@ -95,7 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
         }
         // sort by cost asc
         usort($results, fn($a,$b) => ($a['cost'] ?? 0) <=> ($b['cost'] ?? 0));
-        return response()->json($results);
+    return response()->json($results);
     });
 });
 
@@ -109,6 +109,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Messages
     Route::get('messages', [MessageController::class, 'index']);
+
     Route::post('messages', [MessageController::class, 'store']);
 
     // Orders

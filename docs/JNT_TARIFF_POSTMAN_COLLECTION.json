@@ -1,0 +1,53 @@
+{
+  "info": {
+    "name": "J&T Tariff Integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Tariff Inquiry",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const data = pm.variables.get('data');",
+              "const key = pm.environment.get('JNT_SIGN_KEY') || '';",
+              "const mode = (pm.environment.get('JNT_SIGN_MODE') || 'hex').toLowerCase();",
+              "function md5Hex(str){return CryptoJS.MD5(str).toString(CryptoJS.enc.Hex);}",
+              "function md5RawB64(str){return CryptoJS.enc.Base64.stringify(CryptoJS.MD5(str));}",
+              "let sign;",
+              "if(mode === 'raw'){",
+              "  sign = md5RawB64(data + key);",
+              "} else {",
+              "  const hex = md5Hex(data + key);",
+              "  sign = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(hex));",
+              "}",
+              "pm.variables.set('sign', sign);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/x-www-form-urlencoded"}
+        ],
+        "url": {
+          "raw": "{{JNT_BASE_URL}}{{JNT_PATH_TARIFF}}",
+          "host": ["{{JNT_BASE_URL}}"],
+          "path": ["{{JNT_PATH_TARIFF}}"]
+        },
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {"key": "data", "value": "{{data}}", "type": "text"},
+            {"key": "sign", "value": "{{sign}}", "type": "text"}
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
