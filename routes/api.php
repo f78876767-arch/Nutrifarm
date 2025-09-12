@@ -1,5 +1,3 @@
-
-
 <?php
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +16,12 @@ use App\Http\Controllers\Api\EmailVerificationController;
 use App\Http\Controllers\Api\PasswordlessAuthController;
 use App\Http\Controllers\Api\PromotionController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Shipping\RajaOngkirController;
+use App\Http\Controllers\Api\Shipping\AddressController;
+use App\Http\Controllers\Api\Shipping\JntController;
+use App\Http\Controllers\Api\ForgotPasswordController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ReviewController;
 
 // TEST ROUTE - should appear in route:list
 Route::get('/test-alive', function () {
@@ -31,6 +35,69 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 // Callback should remain public
 Route::post('/payments/xendit/callback', [XenditPaymentController::class, 'handleCallback']);
+
+// Shipping: RajaOngkir public lookups and cost
+Route::prefix('shipping/rajaongkir')->group(function () {
+    Route::get('/provinces', [RajaOngkirController::class, 'provinces']);
+    Route::get('/cities', [RajaOngkirController::class, 'cities']);
+    Route::get('/subdistricts', [RajaOngkirController::class, 'subdistricts']);
+    Route::post('/cost', [RajaOngkirController::class, 'cost']);
+});
+
+// J&T Shipping endpoints
+Route::prefix('shipping/jnt')->group(function () {
+    // Public (optional): tariff inquiry and tracking
+    Route::post('/tariff', [JntController::class, 'tariff']);
+    Route::post('/track', [JntController::class, 'track']);
+
+    // Authenticated: create/cancel shipment orders
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/order/create', [JntController::class, 'createOrder']);
+        Route::post('/order/cancel', [JntController::class, 'cancelOrder']);
+    });
+});
+
+// Auth routes for address and a convenience endpoint to compute cost from saved address
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/shipping/address', [AddressController::class, 'upsert']);
+    Route::get('/shipping/address', [AddressController::class, 'me']);
+
+    Route::post('/shipping/rajaongkir/cost/from-profile', function (\Illuminate\Http\Request $request) {
+        $request->validate([
+            'weight' => 'required|integer|min:1',
+            'couriers' => 'required|array|min:1',
+            'couriers.*' => 'string',
+        ]);
+        $origin = (int) config('shipping.origin_city_id');
+        if (!$origin) {
+            return response()->json(['error' => 'Origin city not configured'], 422);
+        }
+        $user = $request->user();
+        if (!$user->city_id) {
+            return response()->json(['error' => 'User city not set'], 422);
+        }
+        $svc = app(\App\Services\Shipping\RajaOngkirService::class);
+        $results = [];
+        foreach ($request->couriers as $c) {
+            try {
+                $services = $svc->cost([
+                    'origin' => $origin,
+                    'destination' => (int) $user->city_id,
+                    'weight' => (int) $request->weight,
+                    'courier' => strtolower($c),
+                    'originType' => config('shipping.origin_type', 'city'),
+                    'destinationType' => 'city',
+                ]);
+                $results = array_merge($results, $services);
+            } catch (\Throwable $e) {
+                // continue other couriers
+            }
+        }
+        // sort by cost asc
+        usort($results, fn($a,$b) => ($a['cost'] ?? 0) <=> ($b['cost'] ?? 0));
+        return response()->json($results);
+    });
+});
 
 // Protected API routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -46,6 +113,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Orders
     Route::apiResource('orders', OrderController::class);
+    Route::get('orders/{id}/invoice', [OrderController::class, 'invoiceDoc']);
+    Route::get('orders/{id}/receipt', [OrderController::class, 'receiptDoc']);
+    Route::get('orders/{orderId}/reviewable', [OrderController::class, 'reviewable']);
 
     // Cart
     Route::get('cart', [CartController::class, 'index']);
@@ -62,6 +132,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('favorites/check/{productId}', [FavoriteController::class, 'check']);
     Route::post('favorites/toggle', [FavoriteController::class, 'toggle']);
 
+    // Reviews
+    Route::post('/reviews/upsert', [ReviewController::class, 'upsert']);
+
     // Authenticated user
     Route::get('/user', function (Request $request) {
         return $request->user();
@@ -72,6 +145,17 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Notifications
+    Route::post('/notifications/register-token', [NotificationController::class, 'registerToken']);
+    Route::post('/notifications/unregister-token', [NotificationController::class, 'unregisterToken']);
+    Route::post('/notifications/test', [NotificationController::class, 'sendTest']);
+
+    // New notification utilities
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+    Route::get('/notifications/count', [NotificationController::class, 'count']);
 });
 
 
@@ -104,7 +188,6 @@ Route::post('/email/generate-code', [EmailVerificationController::class, 'genera
 Route::post('/email/check-status', [EmailVerificationController::class, 'checkVerificationStatus']);
 
 // 3-Step Authentication Flow (public) - matching frontend team requirements
-Route::post('/auth/check-email-availability', [AuthController::class, 'checkEmailAvailability']);
 Route::post('/auth/send-verification-email', [AuthController::class, 'sendVerificationEmail']);
 Route::post('/auth/verify-email-code', [AuthController::class, 'verifyEmailCode']);
 Route::post('/auth/register-with-email-verification', [AuthController::class, 'registerWithEmailVerification']);
@@ -131,10 +214,18 @@ Route::post('/login', function (Request $request) {
 
 // Public products
 Route::apiResource('products', ProductController::class)->only(['index', 'show']);
+Route::get('products-segmented', [ProductController::class, 'segmented']);
 
 // Promotion endpoints (public)
 Route::get('/promotions/discounts', [PromotionController::class, 'getActiveDiscounts']);
 Route::get('/promotions/flash-sales', [PromotionController::class, 'getActiveFlashSales']);
 Route::get('/promotions/products/{productId}', [PromotionController::class, 'getProductPromotions']);
 Route::post('/promotions/calculate-cart', [PromotionController::class, 'calculateCartTotal']);
+
+// Public auth password reset routes
+Route::post('/auth/forgot-password', [ForgotPasswordController::class, 'send'])->middleware('throttle:10,10');
+Route::post('/auth/reset-password', [ForgotPasswordController::class, 'reset'])->middleware('throttle:10,10');
+
+// Public product reviews
+Route::get('/products/{productId}/reviews', [ReviewController::class, 'productReviews']);
 

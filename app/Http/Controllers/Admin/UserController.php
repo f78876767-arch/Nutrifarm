@@ -9,10 +9,34 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::paginate(15);
-        return view('admin.users.index', compact('users'));
+        $q = trim((string) $request->get('q'));
+        $active = $request->get('active');
+        $verified = $request->get('verified');
+
+        $users = User::query()
+            ->when($q, function ($query) use ($q) {
+                $query->where(function ($qq) use ($q) {
+                    $qq->where('name', 'like', "%{$q}%")
+                       ->orWhere('email', 'like', "%{$q}%");
+                });
+            })
+            ->when($active !== null && $active !== '', function ($query) use ($active) {
+                $query->where('is_active', (bool) $active);
+            })
+            ->when($verified !== null && $verified !== '', function ($query) use ($verified) {
+                if ($verified === '1') {
+                    $query->whereNotNull('email_verified_at');
+                } elseif ($verified === '0') {
+                    $query->whereNull('email_verified_at');
+                }
+            })
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.users.index', compact('users', 'q', 'active', 'verified'));
     }
 
     public function create()

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
@@ -11,8 +12,12 @@ class FavoritesServiceApi extends ChangeNotifier {
   List<Product> _favoriteProducts = [];
   final Set<int> _favoriteProductIds = {};
   bool _isLoading = false;
-  bool _useOfflineMode = false;
   SharedPreferences? _prefs;
+  
+  // Debouncing mechanism to prevent spam
+  final Map<int, Timer> _debounceTimers = {};
+  final Map<int, bool> _pendingToggles = {};
+  static const Duration _debounceDuration = Duration(milliseconds: 500);
   
   List<Product> get favoriteProducts => List.unmodifiable(_favoriteProducts);
   Set<int> get favoriteProductIds => Set.unmodifiable(_favoriteProductIds);
@@ -42,9 +47,8 @@ class FavoritesServiceApi extends ChangeNotifier {
     try {
       if (ApiService.authToken == null) {
         print('❌ User not authenticated - using offline favorites only');
-        _useOfflineMode = true;
         await _loadOfflineFavorites();
-        print('📱 Loaded ${_favoriteProductIds.length} favorites from offline storage');
+        print('📱 Loaded ${_favoriteProductIds.length} favorite IDs and ${_favoriteProducts.length} products from offline storage');
         return;
       }
       
@@ -52,7 +56,6 @@ class FavoritesServiceApi extends ChangeNotifier {
       _favoriteProducts = await ApiService.getFavorites();
       _favoriteProductIds.clear();
       _favoriteProductIds.addAll(_favoriteProducts.map((p) => p.id));
-      _useOfflineMode = false;
       print('✅ Server favorites loaded successfully: ${_favoriteProducts.length} items');
       
       // Save to offline storage
@@ -62,11 +65,10 @@ class FavoritesServiceApi extends ChangeNotifier {
       if (e.toString().contains('Unauthenticated')) {
         print('🔑 Authentication required - switching to offline mode');
       }
-      _useOfflineMode = true;
       // Don't clear favorites on error, keep existing state
       // Load from offline storage if API fails
       await _loadOfflineFavorites();
-      print('📱 Fallback: Loaded ${_favoriteProductIds.length} favorites from offline storage');
+      print('📱 Fallback: Loaded ${_favoriteProductIds.length} favorite IDs and ${_favoriteProducts.length} products from offline storage');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -84,6 +86,20 @@ class FavoritesServiceApi extends ChangeNotifier {
     final offlineFavoriteIds = _prefs?.getStringList('offline_favorites') ?? [];
     _favoriteProductIds.clear();
     _favoriteProductIds.addAll(offlineFavoriteIds.map((id) => int.parse(id)));
+    
+    // If we have offline favorite IDs but no Product objects, try to fetch them
+    if (_favoriteProductIds.isNotEmpty && _favoriteProducts.isEmpty) {
+      try {
+        print('🔄 Loading product details for ${_favoriteProductIds.length} offline favorites...');
+        // Fetch all products and filter to get favorites
+        final allProducts = await ApiService.getProducts();
+        _favoriteProducts = allProducts.where((product) => _favoriteProductIds.contains(product.id)).toList();
+        print('✅ Loaded ${_favoriteProducts.length} favorite product details for offline mode');
+      } catch (e) {
+        print('❌ Failed to load product details for offline favorites: $e');
+        // Keep the IDs but favorites page will show empty
+      }
+    }
   }
   
   // Check if product is favorite
@@ -91,54 +107,94 @@ class FavoritesServiceApi extends ChangeNotifier {
     return _favoriteProductIds.contains(productId);
   }
   
-  // Toggle favorite status
-  Future<void> toggleFavorite(int productId) async {
+  // Toggle favorite status with debouncing to prevent spam
+  Future<void> toggleFavorite(int productId, {Product? product}) async {
     if (_isLoading) return; // Prevent actions during loading
     
+    // Cancel any existing timer for this product
+    _debounceTimers[productId]?.cancel();
+    
+    // Optimistically update UI immediately
+    final wasIsFavorite = _favoriteProductIds.contains(productId);
+    if (wasIsFavorite) {
+      _favoriteProductIds.remove(productId);
+      _favoriteProducts.removeWhere((p) => p.id == productId);
+      print('💖 Removed from favorites (UI): Product $productId');
+    } else {
+      _favoriteProductIds.add(productId);
+      // Add full product object if provided and not already present
+      if (product != null && !_favoriteProducts.any((p) => p.id == productId)) {
+        _favoriteProducts.add(product);
+      }
+      print('💖 Added to favorites (UI): Product $productId');
+    }
+    notifyListeners();
+    
+    // Save to offline storage immediately
+    await _saveOfflineFavorites();
+    print('💾 Favorite ${wasIsFavorite ? 'removed from' : 'added to'} offline storage: Product $productId');
+    
+    // Store the final desired state
+    _pendingToggles[productId] = !wasIsFavorite;
+    
+    // Set up debounced API call
+    _debounceTimers[productId] = Timer(_debounceDuration, () async {
+      await _performToggleApiCall(productId);
+    });
+  }
+  
+  // Internal method to perform the actual API call after debounce
+  Future<void> _performToggleApiCall(int productId) async {
     try {
       // Check if user is authenticated before making API calls
       if (ApiService.authToken == null) {
         print('❌ User not authenticated - favorites stored offline only');
-        _useOfflineMode = true;
+        _pendingToggles.remove(productId);
+        return;
       }
       
-      // Optimistically update UI first
-      final wasIsFavorite = _favoriteProductIds.contains(productId);
-      if (wasIsFavorite) {
-        _favoriteProductIds.remove(productId);
-        _favoriteProducts.removeWhere((p) => p.id == productId);
-      } else {
-        _favoriteProductIds.add(productId);
-      }
-      notifyListeners();
+      // Get the final desired state
+      final shouldBeFavorite = _pendingToggles[productId] ?? false;
+      final currentlyIsFavorite = _favoriteProductIds.contains(productId);
       
-      // Save to offline storage immediately
-      await _saveOfflineFavorites();
-      print('💾 Favorite ${wasIsFavorite ? 'removed from' : 'added to'} offline storage: Product $productId');
-      
-      // Try to sync with API if not in offline mode and user is authenticated
-      if (!_useOfflineMode && ApiService.authToken != null) {
+      // Only make API call if the state changed from what we expect
+      if (shouldBeFavorite == currentlyIsFavorite) {
+        print('🔄 Syncing favorite with server for product $productId...');
+        
         try {
-          print('🔄 Syncing favorite with server...');
           final success = await ApiService.toggleFavorite(productId);
           if (success) {
-            print('✅ Server sync successful');
-            // Reload to get accurate server state
-            await loadFavorites();
+            print('✅ Server sync successful for product $productId');
+            // Note: We don't reload favorites here to avoid overriding user's rapid changes
           } else {
             throw Exception('API returned false');
           }
         } catch (e) {
-          print('❌ API sync failed, staying in offline mode: $e');
+          print('❌ API sync failed for product $productId: $e');
           if (e.toString().contains('Unauthenticated')) {
             print('🔑 Authentication required for server sync');
           }
-          _useOfflineMode = true;
+          
+          // Revert UI state on API failure
+          if (shouldBeFavorite) {
+            _favoriteProductIds.remove(productId);
+            _favoriteProducts.removeWhere((p) => p.id == productId);
+          } else {
+            _favoriteProductIds.add(productId);
+          }
+          notifyListeners();
+          await _saveOfflineFavorites();
         }
       }
+      
+      // Clean up
+      _pendingToggles.remove(productId);
+      _debounceTimers.remove(productId);
+      
     } catch (e) {
-      print('Error toggling favorite: $e');
-      // Don't rethrow to avoid breaking the UI
+      print('Error in toggle API call: $e');
+      _pendingToggles.remove(productId);
+      _debounceTimers.remove(productId);
     }
   }
   
@@ -159,9 +215,7 @@ class FavoritesServiceApi extends ChangeNotifier {
   // Remove product from favorites
   Future<void> removeFromFavorites(int productId) async {
     try {
-      // For now, we'll use toggle since we don't have the favorite_id stored
-      // In a real implementation, you'd store the favorite_id with each favorite
-      final success = await ApiService.toggleFavorite(productId);
+      final success = await ApiService.removeFromFavorites(productId);
       if (success) {
         // Reload favorites to get updated state
         await loadFavorites();
@@ -185,5 +239,20 @@ class FavoritesServiceApi extends ChangeNotifier {
       print('Error clearing favorites: $e');
       rethrow;
     }
+  }
+  
+  // Clean up method to cancel all pending timers
+  void dispose() {
+    for (final timer in _debounceTimers.values) {
+      timer.cancel();
+    }
+    _debounceTimers.clear();
+    _pendingToggles.clear();
+    super.dispose();
+  }
+  
+  // Method to check if a product has pending toggle action
+  bool hasActivePendingToggle(int productId) {
+    return _debounceTimers.containsKey(productId) && (_debounceTimers[productId]?.isActive ?? false);
   }
 }

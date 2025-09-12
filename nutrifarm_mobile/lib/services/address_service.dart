@@ -199,6 +199,35 @@ class AddressService extends ChangeNotifier {
     }
   }
 
+  Future<void> ensureDefaultAddressRoCity({int? roProvinceId, int? roCityId, String? roProvince, String? roCity, String? jntCityCode}) async {
+    final def = defaultAddress;
+    if (def == null) return;
+
+    final noChanges =
+        (roCityId == null || def.roCityId == roCityId) &&
+        (roProvinceId == null || def.roProvinceId == roProvinceId) &&
+        (roCity == null || def.roCity == roCity) &&
+        (roProvince == null || def.roProvince == roProvince) &&
+        (jntCityCode == null || def.jntCityCode == jntCityCode);
+    if (noChanges) return;
+
+    final updated = def.copyWith(
+      roProvinceId: roProvinceId ?? def.roProvinceId,
+      roCityId: roCityId ?? def.roCityId,
+      roProvince: roProvince ?? def.roProvince,
+      roCity: roCity ?? def.roCity,
+      jntCityCode: jntCityCode ?? def.jntCityCode,
+      updatedAt: DateTime.now(),
+    );
+
+    final idx = _addresses.indexWhere((a) => a.id == def.id);
+    if (idx != -1) {
+      _addresses[idx] = updated;
+      await _saveAddresses();
+      notifyListeners();
+    }
+  }
+
   // Get current location
   Future<Position?> getCurrentLocation() async {
     try {

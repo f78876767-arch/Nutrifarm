@@ -30,7 +30,7 @@
                                     Out of Stock Products ({{ $outOfStockProducts->count() }})
                                 </h3>
                                 <p class="mt-1 text-sm text-red-700">
-                                    These products are completely out of stock and need immediate restocking.
+                                    These products are completely out of stock (sum of variant stock is 0) and need immediate restocking.
                                 </p>
                             </div>
                         </div>
@@ -42,7 +42,7 @@
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Product</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Category</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Stock</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Total Stock</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
                                 </tr>
                             </thead>
@@ -65,15 +65,13 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                            {{ $product->stock_quantity }} (Out of Stock)
+                                            {{ $product->total_stock }} (Out of Stock)
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button type="button" 
-                                                onclick="openRestockModal({{ $product->id }}, '{{ addslashes($product->name) }}')"
-                                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs">
-                                            Restock Now
-                                        </button>
+                                        <a href="{{ route('admin.products.edit', $product) }}" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs">
+                                            Manage Variants
+                                        </a>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -98,7 +96,7 @@
                                     Low Stock Products ({{ $lowStockProducts->count() }})
                                 </h3>
                                 <p class="mt-1 text-sm text-yellow-700">
-                                    These products have low stock levels (≤10 units) and should be restocked soon.
+                                    These products have low stock (sum of variant stock ≤ 10 units) and should be restocked soon.
                                 </p>
                             </div>
                         </div>
@@ -110,7 +108,7 @@
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Product</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Category</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Stock</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Total Stock</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
                                 </tr>
                             </thead>
@@ -133,15 +131,13 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                            {{ $product->stock_quantity }} (Low Stock)
+                                            {{ $product->total_stock }} (Low Stock)
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button type="button" 
-                                                onclick="openRestockModal({{ $product->id }}, '{{ addslashes($product->name) }}')"
-                                                class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs">
-                                            Restock
-                                        </button>
+                                        <a href="{{ route('admin.products.edit', $product) }}" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs">
+                                            Manage Variants
+                                        </a>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -168,59 +164,4 @@
         </div>
     </div>
 </div>
-
-<!-- Restock Modal -->
-<div id="restockModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <form id="restockForm" method="POST">
-            @csrf
-            <div class="mt-3">
-                <h3 class="text-lg font-medium text-gray-900 text-center" id="restockModalTitle">Restock Product</h3>
-                <div class="mt-4 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Add Quantity</label>
-                        <input type="number" name="quantity" min="1" required
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <input type="hidden" name="adjustment_type" value="add">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Reason</label>
-                        <textarea name="reason" rows="2" placeholder="e.g., New stock delivery, Manual restock"
-                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
-                    </div>
-                </div>
-                
-                <div class="items-center px-4 py-3">
-                    <button type="submit" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700">
-                        Add Stock
-                    </button>
-                    <button type="button" onclick="closeRestockModal()" 
-                            class="mt-3 px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700">
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-function openRestockModal(productId, productName) {
-    document.getElementById('restockModalTitle').textContent = `Restock - ${productName}`;
-    document.getElementById('restockForm').action = `/simple-admin/inventory/products/${productId}/adjust`;
-    document.getElementById('restockModal').classList.remove('hidden');
-}
-
-function closeRestockModal() {
-    document.getElementById('restockModal').classList.add('hidden');
-}
-
-// Close modal when clicking outside
-document.getElementById('restockModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeRestockModal();
-    }
-});
-</script>
 @endsection

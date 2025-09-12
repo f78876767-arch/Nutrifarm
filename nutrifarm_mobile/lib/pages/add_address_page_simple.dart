@@ -342,7 +342,7 @@ class _AddAddressPageSimpleState extends State<AddAddressPageSimple> {
       final now = DateTime.now();
       
       if (widget.address == null) {
-        // Add new address
+        // Add new address (local only)
         final newAddress = Address(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           label: _labelController.text.trim(),
@@ -358,7 +358,7 @@ class _AddAddressPageSimpleState extends State<AddAddressPageSimple> {
         );
         await addressService.addAddress(newAddress);
       } else {
-        // Update existing address
+        // Update existing address (local only)
         final updatedAddress = widget.address!.copyWith(
           label: _labelController.text.trim(),
           fullAddress: _addressController.text.trim(),

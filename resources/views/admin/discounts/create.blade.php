@@ -34,18 +34,26 @@
                             </div>
 
                             <div>
-                                <label for="type" class="block text-sm font-medium text-gray-700 mb-2">Discount Type*</label>
-                                <select id="type" name="type" required
-                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('type') border-red-500 @enderror">
-                                    <option value="">Select Type</option>
-                                    <option value="percentage" {{ old('type') === 'percentage' ? 'selected' : '' }}>Percentage Discount</option>
-                                    <option value="fixed_amount" {{ old('type') === 'fixed_amount' ? 'selected' : '' }}>Fixed Amount</option>
-                                    <option value="buy_x_get_y" {{ old('type') === 'buy_x_get_y' ? 'selected' : '' }}>Buy X Get Y</option>
-                                </select>
-                                @error('type')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Generated Code</label>
+                                <input type="text" id="code-preview" readonly
+                                       class="w-full rounded-md border-gray-200 bg-gray-100 text-gray-600 shadow-sm"
+                                       placeholder="Auto">
+                                <p class="text-xs text-gray-500 mt-1">Auto from name</p>
                             </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <label for="type" class="block text-sm font-medium text-gray-700 mb-2">Discount Type*</label>
+                            <select id="type" name="type" required
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('type') border-red-500 @enderror">
+                                <option value="">Select Type</option>
+                                <option value="percentage" {{ old('type') === 'percentage' ? 'selected' : '' }}>Percentage Discount</option>
+                                <option value="fixed_amount" {{ old('type') === 'fixed_amount' ? 'selected' : '' }}>Fixed Amount</option>
+                                <option value="buy_x_get_y" {{ old('type') === 'buy_x_get_y' ? 'selected' : '' }}>Buy X Get Y</option>
+                            </select>
+                            @error('type')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         <div class="mt-4">
@@ -255,33 +263,15 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const typeSelect = document.getElementById('type');
-    const percentageFields = document.getElementById('percentage-fields');
-    const fixedFields = document.getElementById('fixed-fields');
-    const buyXGetYFields = document.getElementById('buy-x-get-y-fields');
-    
-    function updateFields() {
-        // Hide all fields first
-        percentageFields.classList.add('hidden');
-        fixedFields.classList.add('hidden');
-        buyXGetYFields.classList.add('hidden');
-        
-        // Show relevant fields
-        switch(typeSelect.value) {
-            case 'percentage':
-                percentageFields.classList.remove('hidden');
-                break;
-            case 'fixed_amount':
-                fixedFields.classList.remove('hidden');
-                break;
-            case 'buy_x_get_y':
-                buyXGetYFields.classList.remove('hidden');
-                break;
-        }
+    const nameInput = document.getElementById('name');
+    const codePreview = document.getElementById('code-preview');
+    function gen(str){
+        let base = str.replace(/[^A-Za-z0-9]/g,'').toUpperCase().substring(0,6);
+        if(base.length < 3) base = 'DISCNT';
+        codePreview.value = base;
     }
-    
-    typeSelect.addEventListener('change', updateFields);
-    updateFields(); // Initial call
+    nameInput.addEventListener('input', ()=> gen(nameInput.value));
+    gen(nameInput.value);
 });
 </script>
 @endsection

@@ -63,16 +63,6 @@
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-
-                        <div>
-                            <label for="stock_quantity" class="block text-sm font-semibold text-gray-700 mb-2">Stock Quantity*</label>
-                            <input type="number" id="stock_quantity" name="stock_quantity" value="{{ old('stock_quantity', $product->stock_quantity) }}" required min="0"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-150 @error('stock_quantity') border-red-500 @enderror"
-                                   placeholder="0">
-                            @error('stock_quantity')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
                     </div>
 
                     <div>
@@ -83,6 +73,23 @@
                         @error('sku')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
+                    </div>
+
+                    <div class="mt-6 border-t pt-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Diskon Produk (Nominal)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="md:col-span-1">
+                                <label for="discount_amount" class="block text-sm font-semibold text-gray-700 mb-2">Potongan (Rp)</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+                                    <input type="text" id="discount_amount" name="discount_amount" value="{{ old('discount_amount', $product->discount_amount ? number_format($product->discount_amount,0,',','.') : '') }}" class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="0" onkeyup="formatRupiah(this)">
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Kosongkan untuk hapus diskon.</p>
+                                @if($product->isDiscountActive())
+                                    <p class="text-xs text-green-600 mt-1">Diskon aktif. Harga setelah diskon: Rp {{ number_format($product->effective_price,0,',','.') }}</p>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -151,7 +158,7 @@
                                 Add Variant
                             </button>
                         </div>
-                        
+                        <p class="text-xs text-gray-500 mb-3">Set stock per variant. Product stock is derived from the sum of all variants.</p>
                         <div id="variantsContainer" class="space-y-4">
                             @foreach($product->variants as $index => $variant)
                                 <div class="variant-row bg-gray-50 p-4 rounded-lg border border-gray-200" data-index="{{ $index }}">
@@ -162,7 +169,7 @@
                                         </button>
                                     </div>
                                     
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         <div>
                                             <label class="block text-xs font-medium text-gray-700 mb-1">Variant Name</label>
                                             <input type="text" name="variants[{{ $index }}][name]" 
@@ -193,20 +200,46 @@
                                         </div>
                                         
                                         <div>
-                                            <label class="block text-xs font-medium text-gray-700 mb-1">Price Override (Rp)</label>
-                                            <input type="text" name="variants[{{ $index }}][price]" 
-                                                   value="{{ $variant->price ? number_format($variant->price, 0, ',', '.') : '' }}"
-                                                   placeholder="Optional price"
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Base Price (Rp)</label>
+                                            <input type="text" name="variants[{{ $index }}][base_price]" 
+                                                   value="{{ $variant->base_price ? number_format($variant->base_price, 0, ',', '.') : '' }}"
+                                                   placeholder="Variant price"
                                                    onkeyup="formatRupiah(this)"
                                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
                                         </div>
                                         
                                         <div>
-                                            <label class="block text-xs font-medium text-gray-700 mb-1">Stock Override</label>
-                                            <input type="number" name="variants[{{ $index }}][stock]" 
-                                                   value="{{ old('variants.' . $index . '.stock', $variant->stock) }}"
-                                                   placeholder="Optional stock"
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Stock Quantity</label>
+                                            <input type="number" name="variants[{{ $index }}][stock_quantity]" 
+                                                   value="{{ old('variants.' . $index . '.stock_quantity', $variant->stock_quantity) }}"
+                                                   placeholder="Stock amount"
                                                    min="0"
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">SKU</label>
+                                            <input type="text" name="variants[{{ $index }}][sku]" 
+                                                   value="{{ old('variants.' . $index . '.sku', $variant->sku) }}"
+                                                   placeholder="Variant SKU"
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Discount (Rp)</label>
+                                            <input type="text" name="variants[{{ $index }}][discount_amount]" 
+                                                   value="{{ $variant->discount_amount ? number_format($variant->discount_amount, 0, ',', '.') : '' }}"
+                                                   placeholder="Discount amount"
+                                                   onkeyup="formatRupiah(this)"
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Weight (kg)</label>
+                                            <input type="number" name="variants[{{ $index }}][weight]" 
+                                                   value="{{ old('variants.' . $index . '.weight', $variant->weight) }}"
+                                                   step="0.01"
+                                                   placeholder="Weight in kg"
                                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
                                         </div>
                                     </div>
@@ -258,7 +291,7 @@
                         </button>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">Variant Name</label>
                             <input type="text" name="variants[${variantIndex}][name]" 
@@ -288,18 +321,41 @@
                         </div>
                         
                         <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Price Override (Rp)</label>
-                            <input type="text" name="variants[${variantIndex}][price]" 
-                                   placeholder="Optional price"
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Base Price (Rp)</label>
+                            <input type="text" name="variants[${variantIndex}][base_price]" 
+                                   placeholder="Variant price"
                                    onkeyup="formatRupiah(this)"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
                         </div>
                         
                         <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Stock Override</label>
-                            <input type="number" name="variants[${variantIndex}][stock]" 
-                                   placeholder="Optional stock"
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Stock Quantity</label>
+                            <input type="number" name="variants[${variantIndex}][stock_quantity]" 
+                                   placeholder="Stock amount"
                                    min="0"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">SKU</label>
+                            <input type="text" name="variants[${variantIndex}][sku]" 
+                                   placeholder="Variant SKU"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Discount (Rp)</label>
+                            <input type="text" name="variants[${variantIndex}][discount_amount]" 
+                                   placeholder="Discount amount"
+                                   onkeyup="formatRupiah(this)"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Weight (kg)</label>
+                            <input type="number" name="variants[${variantIndex}][weight]" 
+                                   step="0.01"
+                                   placeholder="Weight in kg"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
                         </div>
                     </div>
@@ -324,7 +380,7 @@
         });
         
         // Form submission - convert formatted prices to numbers
-        document.querySelector('form').addEventListener('submit', function(e) {
+        document.querySelector('form').addEventListener('submit', function() {
             // Convert main price
             const priceInput = document.getElementById('price');
             if (priceInput.value) {
@@ -332,12 +388,15 @@
             }
             
             // Convert variant prices
-            const variantPrices = document.querySelectorAll('input[name*="[price]"]');
+            const variantPrices = document.querySelectorAll('input[name*="[base_price]"], input[name*="[discount_amount]"]');
             variantPrices.forEach(input => {
                 if (input.value) {
                     input.value = input.value.replace(/[^\d]/g, '');
                 }
             });
+
+            const da = document.getElementById('discount_amount');
+            if (da && da.value) da.value = da.value.replace(/[^\d]/g,'');
         });
     </script>
 @endsection

@@ -8,7 +8,7 @@ class OrderProduct extends Model
 {
     protected $table = 'order_product';
     protected $fillable = [
-        'order_id', 'product_id', 'quantity', 'price',
+        'order_id', 'product_id', 'variant_id', 'quantity', 'price',
     ];
 
     public function order()
@@ -19,5 +19,15 @@ class OrderProduct extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function variant()
+    {
+        return $this->belongsTo(Variant::class);
+    }
+
+    public function review()
+    {
+        return $this->hasOne(Review::class, 'order_product_id');
     }
 }

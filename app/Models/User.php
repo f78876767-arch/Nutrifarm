@@ -49,6 +49,11 @@ class User extends Authenticatable
         return $this->hasMany(FcmToken::class);
     }
 
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -59,6 +64,8 @@ class User extends Authenticatable
         'email',
         'password',
         'address',
+        // Structured address for shipping rates
+        'province_id','province_name','city_id','city_name','postal_code','subdistrict_id','subdistrict_name','phone',
     ];
 
     /**

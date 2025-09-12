@@ -214,15 +214,6 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
-              _buildMenuItem(
-                icon: FeatherIcons.clock,
-                title: 'Pesanan Pending',
-                subtitle: 'Pesanan yang belum selesai',
-                badge: '2',
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                },
-              ),
             ]),
 
             _buildMenuSection(context, 'Akun', [
@@ -230,14 +221,6 @@ class ProfilePage extends StatelessWidget {
                 icon: FeatherIcons.mapPin,
                 title: 'Alamat',
                 subtitle: 'Kelola alamat pengiriman',
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                },
-              ),
-              _buildMenuItem(
-                icon: FeatherIcons.creditCard,
-                title: 'Metode Pembayaran',
-                subtitle: 'Kartu kredit, e-wallet, dll',
                 onTap: () {
                   HapticFeedback.lightImpact();
                 },

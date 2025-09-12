@@ -101,7 +101,7 @@
                         <div class="ml-5 w-0 flex-1">
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Revenue Generated</dt>
-                                <dd class="text-lg font-medium text-gray-900">${{ number_format($totalRevenue ?? 0, 2) }}</dd>
+                                <dd class="text-lg font-medium text-gray-900">{{ \App\Helpers\CurrencyHelper::formatRupiah($totalRevenue ?? 0) }}</dd>
                             </dl>
                         </div>
                     </div>
@@ -171,88 +171,61 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($flashSales as $flashSale)
+                                @php($product = $flashSale->products->first())
+                                @php($now = now()) {{-- define once per row --}}
                                 <tr class="hover:bg-gray-50" data-flash-sale-id="{{ $flashSale->id }}">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <input type="checkbox" class="flash-sale-checkbox rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" value="{{ $flashSale->id }}">
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
-                                            @if($flashSale->product && $flashSale->product->image_url)
+                                            @if($product && $product->image_url)
                                                 <div class="h-12 w-12 flex-shrink-0">
-                                                    <img class="h-12 w-12 rounded object-cover" src="{{ $flashSale->product->image_url }}" alt="{{ $flashSale->product->name }}">
+                                                    <img class="h-12 w-12 rounded object-cover" src="{{ $product->image_url }}" alt="{{ $product->name }}">
                                                 </div>
                                             @else
                                                 <div class="h-12 w-12 flex-shrink-0 bg-gray-200 rounded flex items-center justify-center">
-                                                    <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                                    </svg>
+                                                    <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                                 </div>
                                             @endif
                                             <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $flashSale->product ? $flashSale->product->name : 'Product not found' }}
-                                                </div>
-                                                @if($flashSale->title)
-                                                    <div class="text-xs text-gray-500">{{ Str::limit($flashSale->title, 30) }}</div>
-                                                @endif
+                                                <div class="text-sm font-medium text-gray-900">{{ $product?->name ?? 'Product not found' }}</div>
+                                                <div class="text-xs text-gray-500">{{ Str::limit($flashSale->title, 40) }}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if($flashSale->product)
-                                            <div class="text-sm text-gray-500">
-                                                <span class="line-through">${{ number_format($flashSale->product->price, 2) }}</span>
-                                            </div>
-                                            <div class="text-sm font-medium text-gray-900">${{ number_format($flashSale->flash_price, 2) }}</div>
-                                            @php
-                                                $discount = (($flashSale->product->price - $flashSale->flash_price) / $flashSale->product->price) * 100;
-                                            @endphp
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                                -{{ number_format($discount, 0) }}%
-                                            </span>
+                                        @if($product)
+                                            @php($discountAmount = $flashSale->calculateDiscount($product->price))
+                                            @php($salePrice = $product->price - $discountAmount)
+                                            <div class="text-sm text-gray-500"><span class="line-through">{{ \App\Helpers\CurrencyHelper::formatRupiah($product->price) }}</span></div>
+                                            <div class="text-sm font-medium text-gray-900">{{ \App\Helpers\CurrencyHelper::formatRupiah($salePrice) }}</div>
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">-{{ round(($discountAmount / max(1,$product->price))*100) }}%</span>
                                         @else
-                                            <div class="text-sm font-medium text-gray-900">${{ number_format($flashSale->flash_price, 2) }}</div>
+                                            <div class="text-sm font-medium text-gray-900">—</div>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @php
-                                            $soldQuantity = $flashSale->sold_quantity ?? 0;
-                                            $totalQuantity = $flashSale->quantity;
-                                            $percentage = $totalQuantity > 0 ? ($soldQuantity / $totalQuantity) * 100 : 0;
-                                        @endphp
-                                        <div class="text-sm text-gray-900">{{ $soldQuantity }} / {{ $totalQuantity }}</div>
-                                        <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ min(100, $percentage) }}%"></div>
-                                        </div>
-                                        <div class="text-xs text-gray-500 mt-1">{{ number_format($percentage, 1) }}% sold</div>
+                                        @php($total = $flashSale->max_quantity ?? 0)
+                                        @php($sold = $flashSale->sold_quantity ?? 0)
+                                        @php($perc = $total>0 ? ($sold/$total)*100 : 0)
+                                        <div class="text-sm text-gray-900">{{ $sold }} / {{ $total ?: '∞' }}</div>
+                                        @if($total)
+                                            <div class="w-full bg-gray-200 rounded-full h-2 mt-1"><div class="bg-blue-600 h-2 rounded-full" style="width: {{ min(100,$perc) }}%"></div></div>
+                                            <div class="text-xs text-gray-500 mt-1">{{ number_format($perc,1) }}% sold</div>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">
-                                            {{ $flashSale->starts_at->format('M d, g:i A') }}
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            {{ $flashSale->ends_at->format('M d, g:i A') }}
-                                        </div>
-                                        @php
-                                            $now = now();
-                                            $timeLeft = $flashSale->ends_at->diffInHours($now);
-                                        @endphp
+                                        <div class="text-sm text-gray-900">{{ $flashSale->starts_at->format('d M, H:i') }}</div>
+                                        <div class="text-sm text-gray-500">{{ $flashSale->ends_at->format('d M, H:i') }}</div>
+                                        @php($timeLeftHours = $flashSale->ends_at->diffInHours($now, false))
                                         @if($flashSale->starts_at <= $now && $flashSale->ends_at >= $now)
-                                            <div class="text-xs text-orange-600 font-medium">
-                                                {{ $timeLeft > 24 ? floor($timeLeft/24) . 'd ' . ($timeLeft % 24) . 'h' : $timeLeft . 'h' }} left
-                                            </div>
+                                            <div class="text-xs text-orange-600 font-medium">{{ $timeLeftHours > 24 ? floor($timeLeftHours/24) . 'd ' . ($timeLeftHours % 24) . 'h' : $timeLeftHours . 'h' }} lagi</div>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @php
-                                            $now = now();
-                                            $soldOut = ($flashSale->sold_quantity ?? 0) >= $flashSale->quantity;
-                                            $isActive = $flashSale->is_active && 
-                                                       $flashSale->starts_at <= $now && 
-                                                       $flashSale->ends_at >= $now &&
-                                                       !$soldOut;
-                                        @endphp
-                                        
+                                        @php($soldOut = $flashSale->max_quantity && ($flashSale->sold_quantity ?? 0) >= $flashSale->max_quantity)
+                                        @php($isActive = $flashSale->is_active && $flashSale->starts_at <= $now && $flashSale->ends_at >= $now && !$soldOut)
                                         @if($now < $flashSale->starts_at)
                                             <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Scheduled</span>
                                         @elseif($now > $flashSale->ends_at)
@@ -266,20 +239,15 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @php
-                                            $revenue = ($flashSale->sold_quantity ?? 0) * $flashSale->flash_price;
-                                        @endphp
-                                        <div class="text-sm font-medium text-gray-900">${{ number_format($revenue, 2) }}</div>
+                                        @php($revenue = ($flashSale->sold_quantity ?? 0) * ($product ? ($product->price - $flashSale->calculateDiscount($product->price)) : 0))
+                                        <div class="text-sm font-medium text-gray-900">{{ \App\Helpers\CurrencyHelper::formatRupiah($revenue) }}</div>
                                         <div class="text-xs text-gray-500">Revenue</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex space-x-2">
                                             <a href="{{ route('admin.flash-sales.show', $flashSale) }}" class="text-blue-600 hover:text-blue-900">View</a>
                                             <a href="{{ route('admin.flash-sales.edit', $flashSale) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
-                                            <button onclick="toggleFlashSaleStatus({{ $flashSale->id }}, {{ $flashSale->is_active ? 'false' : 'true' }})" 
-                                                    class="text-yellow-600 hover:text-yellow-900">
-                                                {{ $flashSale->is_active ? 'Deactivate' : 'Activate' }}
-                                            </button>
+                                            <button onclick="toggleFlashSaleStatus({{ $flashSale->id }}, {{ $flashSale->is_active ? 'false' : 'true' }})" class="text-yellow-600 hover:text-yellow-900">{{ $flashSale->is_active ? 'Deactivate' : 'Activate' }}</button>
                                             <button onclick="deleteFlashSale({{ $flashSale->id }})" class="text-red-600 hover:text-red-900">Delete</button>
                                         </div>
                                     </td>
@@ -344,6 +312,30 @@
 </div>
 
 <script>
+// CSRF helper
+function csrfToken() { return document.querySelector('meta[name="csrf-token"]').getAttribute('content'); }
+
+// Generic fetch wrapper
+async function apiRequest(url, method = 'POST', data = null) {
+    const opts = { method, headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' } };
+    if (data) {
+        if (data instanceof FormData) {
+            opts.body = data;
+        } else {
+            opts.headers['Content-Type'] = 'application/json';
+            opts.body = JSON.stringify(data);
+        }
+    }
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+        let msg = 'Request failed';
+        try { const j = await res.json(); msg = j.message || JSON.stringify(j); } catch(e) { msg = res.status + ' ' + res.statusText; }
+        throw new Error(msg);
+    }
+    // Try parse json
+    try { return await res.json(); } catch { return {}; }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Checkbox handling
     const selectAll = document.getElementById('selectAll');
@@ -412,44 +404,42 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function closeBulkModal() {
-    document.getElementById('bulkModal').classList.add('hidden');
-}
-
-function bulkAction(action) {
-    const selectedIds = Array.from(document.querySelectorAll('.flash-sale-checkbox:checked'))
-                             .map(cb => cb.value);
-    
-    if (selectedIds.length === 0) {
-        alert('Please select at least one flash sale');
-        return;
-    }
-    
-    if (action === 'delete' && !confirm(`Are you sure you want to delete ${selectedIds.length} flash sale(s)?`)) {
-        return;
-    }
-    
-    // Here you would make an AJAX request to perform the bulk action
-    console.log(`Bulk ${action} for flash sales:`, selectedIds);
-    alert(`Bulk ${action} completed for ${selectedIds.length} flash sale(s)`);
-    closeBulkModal();
-    location.reload(); // Refresh the page
-}
-
-function toggleFlashSaleStatus(flashSaleId, newStatus) {
-    // Here you would make an AJAX request to toggle the flash sale status
-    console.log(`Toggle flash sale ${flashSaleId} to ${newStatus}`);
-    alert(`Flash sale status updated`);
-    location.reload(); // Refresh the page
-}
-
-function deleteFlashSale(flashSaleId) {
-    if (confirm('Are you sure you want to delete this flash sale?')) {
-        // Here you would make an AJAX request to delete the flash sale
-        console.log(`Delete flash sale ${flashSaleId}`);
-        alert('Flash sale deleted');
-        location.reload(); // Refresh the page
+async function toggleFlashSaleStatus(flashSaleId, newStatus) {
+    try {
+        const route = `{{ url('simple-admin/flash-sales') }}/${flashSaleId}/toggle-status`;
+        await apiRequest(route, 'PATCH');
+        location.reload();
+    } catch (e) {
+        alert('Failed to toggle status: ' + e.message);
     }
 }
+
+async function deleteFlashSale(flashSaleId) {
+    if (!confirm('Are you sure you want to delete this flash sale?')) return;
+    try {
+        const route = `{{ url('simple-admin/flash-sales') }}/${flashSaleId}`;
+        await apiRequest(route, 'DELETE');
+        // Remove row without full reload
+        const row = document.querySelector(`tr[data-flash-sale-id='${flashSaleId}']`);
+        if (row) row.remove();
+    } catch (e) {
+        alert('Failed to delete: ' + e.message);
+    }
+}
+
+async function bulkAction(action) {
+    const selectedIds = Array.from(document.querySelectorAll('.flash-sale-checkbox:checked')).map(cb => cb.value);
+    if (!selectedIds.length) { alert('Please select at least one flash sale'); return; }
+    if (action === 'delete' && !confirm(`Delete ${selectedIds.length} flash sale(s)?`)) return;
+    try {
+        const route = `{{ route('admin.flash-sales.bulk-action') }}`;
+        await apiRequest(route, 'POST', { action, flash_sale_ids: selectedIds });
+        location.reload();
+    } catch(e) {
+        alert('Bulk action failed: ' + e.message);
+    } finally { closeBulkModal(); }
+}
+
+function closeBulkModal() { document.getElementById('bulkModal').classList.add('hidden'); }
 </script>
 @endsection

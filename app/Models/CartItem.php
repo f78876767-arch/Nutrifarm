@@ -32,13 +32,13 @@ class CartItem extends Model
         return $this->belongsTo(Variant::class);
     }
     
-    // Get the effective price (variant price or product price)
+    // Get the effective price (variant or product effective price)
     public function getPrice()
     {
-        if ($this->variant && $this->variant->price) {
-            return $this->variant->price;
+        if ($this->variant) {
+            return $this->variant->effective_price;
         }
-        return $this->product->discount_price ?? $this->product->price;
+        return $this->product ? $this->product->effective_price : 0;
     }
     
     // Get total price for this cart item (price * quantity)

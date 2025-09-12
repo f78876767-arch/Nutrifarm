@@ -1,29 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/skeleton_loading.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
-
-class NotificationItem {
-  final String id;
-  final String title;
-  final String message;
-  final DateTime timestamp;
-  final NotificationType type;
-  bool isRead;
-
-  NotificationItem({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.timestamp,
-    required this.type,
-    this.isRead = false,
-  });
-}
-
-enum NotificationType { order, promotion, general, delivery }
+import '../services/notification_service.dart';
+import '../models/app_notification.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -33,121 +16,93 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
-  bool _isLoading = true;
-  
-  List<NotificationItem> _notifications = [
-    NotificationItem(
-      id: '1',
-      title: 'Order Delivered Successfully! 🎉',
-      message: 'Your order #NF2024001 has been delivered. Thank you for shopping with us!',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      type: NotificationType.delivery,
-    ),
-    NotificationItem(
-      id: '2',
-      title: 'Special Discount - 30% Off! 🔥',
-      message: 'Limited time offer on organic honey and coconut oil. Don\'t miss out!',
-      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-      type: NotificationType.promotion,
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '3',
-      title: 'Order Confirmed',
-      message: 'We\'ve received your order #NF2024002 and it\'s being prepared for shipment.',
-      timestamp: DateTime.now().subtract(const Duration(days: 1)),
-      type: NotificationType.order,
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '4',
-      title: 'New Products Available! 🌟',
-      message: 'Check out our latest collection of organic essential oils and herbal supplements.',
-      timestamp: DateTime.now().subtract(const Duration(days: 2)),
-      type: NotificationType.general,
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '5',
-      title: 'Flash Sale Alert! ⚡',
-      message: '48-hour flash sale on all natural products. Up to 50% off on selected items.',
-      timestamp: DateTime.now().subtract(const Duration(days: 3)),
-      type: NotificationType.promotion,
-      isRead: true,
-    ),
-  ];
-
-  int get unreadCount => _notifications.where((n) => !n.isRead).length;
+  bool _initialLoading = true;
+  final ScrollController _scroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    // Simulate loading notifications
-    Future.delayed(Duration(milliseconds: 800), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+    final svc = NotificationService();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await svc.fetchFirstPage();
+      setState(() => _initialLoading = false);
+    });
+    _scroll.addListener(() async {
+      final svc = NotificationService();
+      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
+        await svc.fetchNextPage();
       }
     });
   }
 
   @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(FeatherIcons.arrowLeft, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Column(
-          children: [
-            Text(
-              'Notifications',
-              style: GoogleFonts.nunitoSans(
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-                color: Colors.black,
+    return ChangeNotifierProvider.value(
+      value: NotificationService(),
+      child: Consumer<NotificationService>(
+        builder: (context, svc, _) {
+          final unreadCount = svc.unreadCount;
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              centerTitle: true,
+              leading: IconButton(
+                icon: const Icon(FeatherIcons.arrowLeft, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
               ),
+              title: Column(
+                children: [
+                  Text(
+                    'Notifications',
+                    style: GoogleFonts.nunitoSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: Colors.black,
+                    ),
+                  ),
+                  if (unreadCount > 0)
+                    Text(
+                      '$unreadCount new',
+                      style: GoogleFonts.nunitoSans(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                if (unreadCount > 0)
+                  TextButton(
+                    onPressed: () async {
+                      await svc.markAllRead();
+                      HapticFeedback.lightImpact();
+                    },
+                    child: Text(
+                      'Mark All Read',
+                      style: GoogleFonts.nunitoSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            if (unreadCount > 0)
-              Text(
-                '$unreadCount new',
-                style: GoogleFonts.nunitoSans(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                  color: AppColors.primaryGreen,
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          if (unreadCount > 0)
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  for (var notification in _notifications) {
-                    notification.isRead = true;
-                  }
-                });
-                HapticFeedback.lightImpact();
-              },
-              child: Text(
-                'Mark All Read',
-                style: GoogleFonts.nunitoSans(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: AppColors.primaryGreen,
-                ),
-              ),
-            ),
-        ],
+            body: _initialLoading
+                ? _buildNotificationsSkeleton()
+                : (svc.items.isEmpty ? _buildEmptyState() : _buildNotificationsList(svc)),
+          );
+        },
       ),
-      body: _isLoading ? _buildNotificationsSkeleton() : (_notifications.isEmpty ? _buildEmptyState() : _buildNotificationsList()),
     );
   }
 
@@ -257,19 +212,28 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
-  Widget _buildNotificationsList() {
+  Widget _buildNotificationsList(NotificationService svc) {
     return ListView.separated(
+      controller: _scroll,
       padding: const EdgeInsets.all(16),
-      itemCount: _notifications.length,
+      itemCount: svc.items.length + (svc.hasMore ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final notification = _notifications[index];
-        return _buildNotificationCard(notification, index);
+        if (index >= svc.items.length) {
+          return const Center(child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: CircularProgressIndicator(),
+          ));
+        }
+        final notification = svc.items[index];
+        return _buildNotificationCard(notification, index, svc);
       },
     );
   }
 
-  Widget _buildNotificationCard(NotificationItem notification, int index) {
+  Widget _buildNotificationCard(AppNotification notification, int index, NotificationService svc) {
+    final type = _mapType(notification.type);
+    final isRead = notification.isRead;
     return Dismissible(
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
@@ -285,12 +249,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
           color: Colors.white,
         ),
       ),
-      onDismissed: (direction) {
-        setState(() {
-          _notifications.removeAt(index);
-        });
+      onDismissed: (direction) async {
+        await svc.delete(notification.id);
         HapticFeedback.lightImpact();
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -300,31 +261,31 @@ class _NotificationsPageState extends State<NotificationsPage> {
             action: SnackBarAction(
               label: 'Undo',
               onPressed: () {
-                setState(() {
-                  _notifications.insert(index, notification);
-                });
+                // Optional: re-fetch first page
+                svc.fetchFirstPage();
               },
             ),
           ),
         );
       },
       child: GestureDetector(
-        onTap: () {
-          if (!notification.isRead) {
-            setState(() {
-              notification.isRead = true;
-            });
+        onTap: () async {
+          if (!isRead) {
+            await svc.markRead(notification.id);
           }
           HapticFeedback.lightImpact();
+          final deep = notification.deepLink;
+          if (deep != null && deep.isNotEmpty) {
+            // Use Navigator via DeepLinkService or direct mapping
+            // For now rely on DeepLinkService if OS provided link; otherwise you can parse deep link here
+          }
         },
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: notification.isRead 
-                ? Colors.white 
-                : AppColors.primaryGreen.withOpacity(0.05),
+            color: isRead ? Colors.white : AppColors.primaryGreen.withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
-            border: notification.isRead
+            border: isRead
                 ? Border.all(color: Colors.grey.shade200)
                 : Border.all(color: AppColors.primaryGreen.withOpacity(0.2)),
             boxShadow: [
@@ -338,22 +299,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Notification Icon
               Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: _getNotificationColor(notification.type),
+                  color: _getNotificationColor(type),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  _getNotificationIcon(notification.type),
+                  _getNotificationIcon(type),
                   size: 20,
                   color: Colors.white,
                 ),
               ),
               const SizedBox(width: 16),
-              // Notification Content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,7 +329,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                             ),
                           ),
                         ),
-                        if (!notification.isRead)
+                        if (!isRead)
                           Container(
                             width: 8,
                             height: 8,
@@ -383,7 +342,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      notification.message,
+                      notification.body,
                       style: GoogleFonts.nunitoSans(
                         fontSize: 13,
                         color: Colors.grey.shade600,
@@ -392,7 +351,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _formatTimestamp(notification.timestamp),
+                      _formatTimestamp(notification.createdAt),
                       style: GoogleFonts.nunitoSans(
                         fontSize: 12,
                         color: Colors.grey.shade500,
@@ -407,6 +366,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ),
       ),
     );
+  }
+
+  NotificationType _mapType(String t) {
+    switch (t) {
+      case 'order':
+        return NotificationType.order;
+      case 'promotion':
+        return NotificationType.promotion;
+      case 'delivery':
+        return NotificationType.delivery;
+      default:
+        return NotificationType.general;
+    }
   }
 
   Color _getNotificationColor(NotificationType type) {
@@ -450,3 +422,5 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 }
+
+enum NotificationType { order, promotion, general, delivery }

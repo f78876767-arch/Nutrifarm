@@ -1,3 +1,6 @@
-name,description,price,stock_quantity,category,sku,status,weight,dimensions,image_url
-Sample Product 1,This is a sample product description,29.99,100,Electronics,SKU001,active,1.2,10x5x3,https://example.com/image1.jpg
-Sample Product 2,Another sample product,15.50,50,Home & Garden,SKU002,active,0.8,8x4x2,https://example.com/image2.jpg
+name,description,category,variant_name,variant_value,base_price,stock_quantity,sku,is_active,discount_amount,weight,unit
+Sample Product 1,Contoh produk diskon,Minuman,Size,1 Liter,32000,100,SKU001,true,5000,1.2,l
+Sample Product 2,Produk tanpa diskon,Makanan,Weight,500g,15500,50,SKU002,true,,0.5,g
+Sample Product 3,Produk dengan varian,Kesehatan,Pack,1 Pack,45000,25,SKU003,true,2500,0.3,pack
+Sample Product 4,Multi varian 1,Minuman,Size,500ml,25000,30,SKU004A,true,,0.6,ml
+Sample Product 4,Multi varian 2,Minuman,Size,1 Liter,45000,20,SKU004B,true,3000,1.1,l

@@ -13,21 +13,65 @@ class XenditService
 
     public function __construct()
     {
-        $config = Configuration::getDefaultConfiguration()
-            ->setApiKey(config('services.xendit.api_key'));
+        $apiKey = config('services.xendit.api_key') ?? config('services.xendit.secret_key');
+        $config = Configuration::getDefaultConfiguration()->setApiKey($apiKey);
         $this->invoiceApi = new InvoiceApi(null, $config);
     }
 
-    public function createInvoice($params)
+    /**
+     * Always returns a plain PHP array for easier consumption by controllers.
+     */
+    public function createInvoice($params): array
     {
-        Log::info('Xendit createInvoice params', $params);
-        $invoiceRequest = new CreateInvoiceRequest($params);
-        Log::info('Xendit CreateInvoiceRequest', $invoiceRequest->jsonSerialize());
-        return $this->invoiceApi->createInvoice($invoiceRequest);
+        // Normalize params
+        if (is_object($params)) {
+            $params = (array) $params;
+        }
+
+        try {
+            Log::info('Xendit createInvoice params', (array) $params);
+
+            $invoiceRequest = new CreateInvoiceRequest($params);
+            $serialized = $invoiceRequest->jsonSerialize();
+            Log::info('Xendit CreateInvoiceRequest', (array) $serialized);
+
+            $response = $this->invoiceApi->createInvoice($invoiceRequest);
+
+            $data = $this->normalizeResponse($response);
+            Log::info('Xendit invoice created', $data);
+
+            return $data;
+        } catch (\Throwable $e) {
+            Log::error('Xendit createInvoice failed', [
+                'message' => $e->getMessage(),
+                'params' => $params,
+            ]);
+            throw $e;
+        }
     }
 
-    public function getInvoice($id)
+    public function getInvoice($id): array
     {
-        return $this->invoiceApi->getInvoiceById($id);
+        $response = $this->invoiceApi->getInvoiceById($id);
+        return $this->normalizeResponse($response);
+    }
+
+    /**
+     * Normalize SDK object/array to plain array.
+     */
+    private function normalizeResponse($response): array
+    {
+        if (is_array($response)) {
+            return $response;
+        }
+        if (is_object($response)) {
+            if (method_exists($response, 'jsonSerialize')) {
+                $serialized = $response->jsonSerialize();
+                return is_array($serialized) ? $serialized : (array) $serialized;
+            }
+            // Fallback: deep cast via json encode/decode
+            return json_decode(json_encode($response), true) ?? [];
+        }
+        return [];
     }
 }

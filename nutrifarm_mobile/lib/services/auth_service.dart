@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
+import 'push_service.dart';
 
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
@@ -28,6 +29,7 @@ class AuthService extends ChangeNotifier {
     
     // Load saved token
     _authToken = _prefs?.getString('auth_token');
+    print('🔥 AUTH DEBUG: Loaded token from prefs: ${_authToken != null ? "present (${_authToken!.substring(0, 20)}...)" : "null"}');
     
     // Load user data
     final userData = _prefs?.getString('user_data');
@@ -38,12 +40,16 @@ class AuthService extends ChangeNotifier {
         
         // Set token in API service
         ApiService.setAuthToken(_authToken!);
+        print('🔥 AUTH DEBUG: Token set in ApiService, user authenticated as: ${_currentUser?.name}');
         
         // Verify token is still valid
         await _verifyToken();
       } catch (e) {
+        print('🔥 AUTH DEBUG: Error loading user data: $e');
         await logout(); // Clear invalid data
       }
+    } else {
+      print('🔥 AUTH DEBUG: No valid auth data found');
     }
     notifyListeners();
   }
@@ -135,6 +141,8 @@ class AuthService extends ChangeNotifier {
 
         await _saveAuthData();
         ApiService.setAuthToken(_authToken!);
+        // Initialize push and register token
+        await PushService.initialize();
         notifyListeners();
 
         return AuthResult(success: true, message: 'Login successful');
@@ -222,6 +230,87 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Request a password reset link to be sent to the user's email
+  Future<AuthResult> requestPasswordReset(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/forgot-password'),
+        headers: const {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({'email': email}),
+      );
+
+      if (response.body.isEmpty) {
+        return AuthResult(success: false, message: 'Empty server response');
+      }
+
+      final data = json.decode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return AuthResult(
+          success: true,
+          message: data['message'] ?? 'Password reset link sent. Please check your email.',
+        );
+      } else {
+        return AuthResult(
+          success: false,
+          message: data['message'] ?? 'Failed to send reset link',
+        );
+      }
+    } catch (e) {
+      return AuthResult(
+        success: false,
+        message: 'Network error. Please check your connection.',
+      );
+    }
+  }
+
+  /// Reset password using token from email (if your backend supports this flow)
+  Future<AuthResult> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/reset-password'),
+        headers: const {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'email': email,
+          'token': token,
+          'password': password,
+          'password_confirmation': password,
+        }),
+      );
+
+      if (response.body.isEmpty) {
+        return AuthResult(success: false, message: 'Empty server response');
+      }
+
+      final data = json.decode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return AuthResult(
+          success: true,
+          message: data['message'] ?? 'Password has been reset successfully',
+        );
+      } else {
+        return AuthResult(
+          success: false,
+          message: data['message'] ?? 'Password reset failed',
+        );
+      }
+    } catch (e) {
+      return AuthResult(
+        success: false,
+        message: 'Network error. Please try again.',
+      );
+    }
+  }
+
   /// Verify if current token is still valid
   Future<bool> _verifyToken() async {
     if (_authToken == null) return false;
@@ -266,6 +355,9 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       // Continue with local logout even if API call fails
     }
+
+    // Unregister device token
+    await PushService.logoutCleanup();
 
     _currentUser = null;
     _isAuthenticated = false;

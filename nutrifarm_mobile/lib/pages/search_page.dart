@@ -4,7 +4,7 @@ import '../widgets/product_card.dart';
 import '../widgets/skeleton_loading.dart';
 import '../data/product_data.dart';
 import '../theme/app_theme.dart';
-import '../pages/product_detail_page_new.dart';
+import '../pages/product_detail_page.dart';
 import '../services/search_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
@@ -42,18 +42,20 @@ class _SearchPageState extends State<SearchPage> {
 
   void _onSearchChanged(String query) async {
     final searchService = Provider.of<SearchService>(context, listen: false);
-    
+
     setState(() {
       _isSearching = query.isNotEmpty;
     });
-    
+
     if (query.isNotEmpty) {
       final suggestions = await searchService.getSuggestions(query);
       setState(() {
         _suggestions = suggestions;
-        _showSuggestions = query.length > 0 && query.length < 3; // Show suggestions for 1-2 chars
+        _showSuggestions =
+            query.isNotEmpty &&
+            query.length < 3; // Show suggestions for 1-2 chars
       });
-      
+
       final searchResults = await searchService.search(query);
       setState(() {
         _searchResults = searchResults;
@@ -74,11 +76,13 @@ class _SearchPageState extends State<SearchPage> {
     setState(() {
       _isSearching = true;
     });
-    
+
     final searchService = Provider.of<SearchService>(context, listen: false);
     _searchController.text = query;
     // Use the method that adds to search history
-    final searchResults = await searchService.performSearchAndAddToHistory(query);
+    final searchResults = await searchService.performSearchAndAddToHistory(
+      query,
+    );
     setState(() {
       _searchResults = searchResults;
       _showSuggestions = false;
@@ -93,13 +97,18 @@ class _SearchPageState extends State<SearchPage> {
       // Get popular searches based on actual product names and categories from API
       final products = await ProductData.getProducts();
       final popularProducts = products
-          .where((p) => p.discountPrice != null || p.variants.isNotEmpty || p.rating > 4.5)
+          .where(
+            (p) =>
+                p.discountPrice != null ||
+                p.variants.isNotEmpty ||
+                p.rating > 4.5,
+          )
           .toList();
-      
+
       popularProducts.sort((a, b) => b.rating.compareTo(a.rating));
-      
+
       final popularSearches = <String>[];
-      
+
       // Add top-rated product names (shortened)
       for (final product in popularProducts.take(3)) {
         final words = product.name.split(' ');
@@ -109,28 +118,36 @@ class _SearchPageState extends State<SearchPage> {
           popularSearches.add(product.name);
         }
       }
-      
+
       // Add categories with high-value products
       final categoryValues = <String, double>{};
       for (final product in products) {
         for (final category in product.categories) {
-          categoryValues[category.name] = (categoryValues[category.name] ?? 0) + product.price;
+          categoryValues[category.name] =
+              (categoryValues[category.name] ?? 0) + product.price;
         }
       }
-      
+
       final topCategories = categoryValues.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
-      
+
       for (final entry in topCategories.take(3)) {
         if (!popularSearches.contains(entry.key)) {
           popularSearches.add(entry.key);
         }
       }
-      
+
       return popularSearches.take(6).toList();
     } catch (e) {
       // Return fallback popular searches if API fails
-      return ['Honey', 'Organic', 'Natural', 'Health', 'Beverages', 'Supplements'];
+      return [
+        'Honey',
+        'Organic',
+        'Natural',
+        'Health',
+        'Beverages',
+        'Supplements',
+      ];
     }
   }
 
@@ -145,7 +162,10 @@ class _SearchPageState extends State<SearchPage> {
             elevation: 0,
             scrolledUnderElevation: 1,
             leading: IconButton(
-              icon: const Icon(FeatherIcons.arrowLeft, color: AppColors.onSurface),
+              icon: const Icon(
+                FeatherIcons.arrowLeft,
+                color: AppColors.onSurface,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
             title: Container(
@@ -165,11 +185,22 @@ class _SearchPageState extends State<SearchPage> {
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  prefixIcon: Icon(FeatherIcons.search, size: 18, color: AppColors.onSurfaceVariant),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  prefixIcon: Icon(
+                    FeatherIcons.search,
+                    size: 18,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: Icon(Icons.clear, size: 18, color: AppColors.onSurfaceVariant),
+                          icon: Icon(
+                            Icons.clear,
+                            size: 18,
+                            color: AppColors.onSurfaceVariant,
+                          ),
                           onPressed: () {
                             _searchController.clear();
                             searchService.clearSearch();
@@ -182,7 +213,10 @@ class _SearchPageState extends State<SearchPage> {
                         )
                       : null,
                 ),
-                style: GoogleFonts.nunitoSans(fontSize: 14, color: AppColors.onSurface),
+                style: GoogleFonts.nunitoSans(
+                  fontSize: 14,
+                  color: AppColors.onSurface,
+                ),
                 onSubmitted: (query) {
                   if (query.trim().isNotEmpty) {
                     _performSearch(query.trim());
@@ -190,24 +224,6 @@ class _SearchPageState extends State<SearchPage> {
                 },
               ),
             ),
-            actions: [
-              // Filter button (future enhancement)
-              IconButton(
-                icon: Icon(FeatherIcons.sliders, color: AppColors.onSurfaceVariant),
-                onPressed: () {
-                  // TODO: Implement filter functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Filter coming soon!',
-                        style: GoogleFonts.nunitoSans(color: Colors.white),
-                      ),
-                      backgroundColor: AppColors.primaryGreen,
-                    ),
-                  );
-                },
-              ),
-            ],
           ),
           body: _buildBody(searchService),
         );
@@ -219,19 +235,19 @@ class _SearchPageState extends State<SearchPage> {
     if (_isSearching) {
       return _buildSearchLoading();
     }
-    
+
     if (_showSuggestions && _suggestions.isNotEmpty) {
       return _buildSuggestionsList();
     }
-    
+
     if (_searchController.text.isNotEmpty && _searchResults.isNotEmpty) {
       return _buildSearchResults();
-    } 
-    
+    }
+
     if (_searchController.text.isNotEmpty && _searchResults.isEmpty) {
       return _buildNoResults();
     }
-    
+
     return _buildSearchSuggestions(searchService);
   }
 
@@ -313,11 +329,16 @@ class _SearchPageState extends State<SearchPage> {
                     _performSearch(search);
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceVariant,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.outline.withOpacity(0.2)),
+                      border: Border.all(
+                        color: AppColors.outline.withOpacity(0.2),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -366,7 +387,7 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 );
               }
-              
+
               final popularSearches = snapshot.data ?? [];
               return Wrap(
                 spacing: 8,
@@ -378,11 +399,16 @@ class _SearchPageState extends State<SearchPage> {
                       _performSearch(search);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryGreen.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
+                        border: Border.all(
+                          color: AppColors.primaryGreen.withOpacity(0.3),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -472,11 +498,7 @@ class _SearchPageState extends State<SearchPage> {
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: 18,
-              color: AppColors.primaryGreen,
-            ),
+            Icon(icon, size: 18, color: AppColors.primaryGreen),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -506,15 +528,16 @@ class _SearchPageState extends State<SearchPage> {
       child: ListView.separated(
         padding: EdgeInsets.zero,
         itemCount: _suggestions.length,
-        separatorBuilder: (context, index) => Divider(
-          height: 1,
-          color: AppColors.outline.withOpacity(0.1),
-        ),
+        separatorBuilder: (context, index) =>
+            Divider(height: 1, color: AppColors.outline.withOpacity(0.1)),
         itemBuilder: (context, index) {
           final suggestion = _suggestions[index];
           return ListTile(
             dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 4,
+            ),
             leading: Icon(
               FeatherIcons.search,
               size: 16,
@@ -594,7 +617,10 @@ class _SearchPageState extends State<SearchPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryGreen,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -646,7 +672,11 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                     );
                   },
-                  icon: Icon(FeatherIcons.sliders, size: 16, color: AppColors.primaryGreen),
+                  icon: Icon(
+                    FeatherIcons.sliders,
+                    size: 16,
+                    color: AppColors.primaryGreen,
+                  ),
                   label: Text(
                     'Sort',
                     style: GoogleFonts.nunitoSans(
@@ -678,7 +708,7 @@ class _SearchPageState extends State<SearchPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ProductDetailPageNew(product: product),
+                        builder: (context) => ProductDetailPage(product: product),
                       ),
                     );
                   },

@@ -12,6 +12,37 @@
         </div>
     </div>
 
+    <form method="GET" action="{{ route('admin.users.index') }}" class="mb-4 bg-white p-4 rounded-md shadow flex flex-wrap items-end gap-3">
+        <div>
+            <label class="block text-xs text-gray-600 mb-1">Search</label>
+            <input type="text" name="q" value="{{ $q ?? '' }}" placeholder="Name or email..." class="border rounded px-3 py-2 w-64">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-600 mb-1">Active</label>
+            <select name="active" class="border rounded px-3 py-2">
+                <option value="">All</option>
+                <option value="1" @selected(($active ?? '') === '1')>Active</option>
+                <option value="0" @selected(($active ?? '') === '0')>Inactive</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-600 mb-1">Email Verified</label>
+            <select name="verified" class="border rounded px-3 py-2">
+                <option value="">All</option>
+                <option value="1" @selected(($verified ?? '') === '1')>Verified</option>
+                <option value="0" @selected(($verified ?? '') === '0')>Unverified</option>
+            </select>
+        </div>
+        <div>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">Filter</button>
+        </div>
+        @if(($q ?? false) || ($active ?? false) || ($verified ?? false))
+        <div>
+            <a href="{{ route('admin.users.index') }}" class="text-sm text-gray-600">Reset</a>
+        </div>
+        @endif
+    </form>
+
     <div class="bg-white shadow-md rounded-lg overflow-hidden">
         <table class="min-w-full">
             <thead class="bg-gray-50">
@@ -98,7 +129,7 @@
 
     @if($users->hasPages())
         <div class="mt-6">
-            {{ $users->links() }}
+            {{ $users->appends(['q' => $q, 'active' => $active, 'verified' => $verified])->links() }}
         </div>
     @endif
 @endsection

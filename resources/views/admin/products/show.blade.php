@@ -65,9 +65,9 @@
                                 <p class="text-2xl font-bold text-primary-600">Rp {{ number_format($product->price, 0, ',', '.') }}</p>
                             </div>
                             <div class="bg-gray-50 p-4 rounded-lg">
-                                <h3 class="text-sm font-semibold text-gray-700 mb-1">Stock</h3>
-                                <p class="text-2xl font-bold {{ $product->stock_quantity > 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $product->stock_quantity }}
+                                <h3 class="text-sm font-semibold text-gray-700 mb-1">Stock (sum of variants)</h3>
+                                <p class="text-2xl font-bold {{ $product->total_stock > 0 ? 'text-green-600' : 'text-red-600' }}">
+                                    {{ $product->total_stock }}
                                 </p>
                             </div>
                         </div>
@@ -144,8 +144,8 @@
                                     </div>
                                     <div>
                                         <span class="text-xs text-gray-500">Stock</span>
-                                        <p class="text-sm font-semibold {{ ($variant->stock ?? $product->stock_quantity) > 0 ? 'text-green-600' : 'text-red-600' }}">
-                                            {{ $variant->stock ?? $product->stock_quantity }}
+                                        <p class="text-sm font-semibold {{ ($variant->stock_quantity ?? 0) > 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $variant->stock_quantity ?? 0 }}
                                         </p>
                                     </div>
                                 </div>
@@ -220,18 +220,18 @@
                     Stock Status
                 </h3>
                 <div class="text-center">
-                    @if($product->stock_quantity > 20)
+                    @if($product->total_stock > 20)
                         <div class="mb-2">
                             <i class="fas fa-check-circle text-4xl text-green-500"></i>
                         </div>
                         <p class="text-green-600 font-semibold">In Stock</p>
-                        <p class="text-sm text-gray-600">{{ $product->stock_quantity }} units available</p>
-                    @elseif($product->stock_quantity > 0)
+                        <p class="text-sm text-gray-600">{{ $product->total_stock }} units available</p>
+                    @elseif($product->total_stock > 0)
                         <div class="mb-2">
                             <i class="fas fa-exclamation-triangle text-4xl text-yellow-500"></i>
                         </div>
                         <p class="text-yellow-600 font-semibold">Low Stock</p>
-                        <p class="text-sm text-gray-600">Only {{ $product->stock_quantity }} units left</p>
+                        <p class="text-sm text-gray-600">Only {{ $product->total_stock }} units left</p>
                     @else
                         <div class="mb-2">
                             <i class="fas fa-times-circle text-4xl text-red-500"></i>

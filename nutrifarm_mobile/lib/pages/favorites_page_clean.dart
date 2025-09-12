@@ -8,7 +8,6 @@ import '../theme/app_theme.dart';
 import '../pages/product_detail_page.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
 import '../services/favorites_service_api.dart';
-import '../services/cart_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 
@@ -203,194 +202,66 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Widget _buildFavoritesList() {
     return RefreshIndicator(
       onRefresh: _loadFavoriteProducts,
-      child: Column(
-        children: [
-          // Filter/Sort Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Icon(
-                        FeatherIcons.heart,
-                        size: 16,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Your favorite products',
-                        style: GoogleFonts.nunitoSans(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        FeatherIcons.filter,
-                        size: 14,
-                        color: AppColors.primaryGreen,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Filter',
-                        style: GoogleFonts.nunitoSans(
-                          color: AppColors.primaryGreen,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Products Grid
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(16),
-              physics: const AlwaysScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.65,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.65,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        itemCount: _favoriteProducts.length,
+        itemBuilder: (context, index) {
+          final product = _favoriteProducts[index];
+          return Stack(
+            children: [
+              custom_widgets.ProductCard(
+                product: product,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProductDetailPage(product: product),
+                    ),
+                  );
+                },
               ),
-              itemCount: _favoriteProducts.length,
-              itemBuilder: (context, index) {
-                final product = _favoriteProducts[index];
-                return Stack(
-                  children: [
-                    custom_widgets.ProductCard(
-                      product: product,
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Consumer<FavoritesServiceApi>(
+                  builder: (context, favoritesService, child) {
+                    return GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ProductDetailPage(product: product),
-                          ),
-                        );
+                        _removeFromFavorites(product);
                       },
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Consumer<FavoritesServiceApi>(
-                        builder: (context, favoritesService, child) {
-                          return GestureDetector(
-                            onTap: () {
-                              _removeFromFavorites(product);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.favorite,
-                                color: Colors.red,
-                                size: 16,
-                              ),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
                             ),
-                          );
-                        },
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.favorite,
+                          color: Colors.red,
+                          size: 16,
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          
-          // Action Bar
-          if (_favoriteProducts.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        _addAllToCart();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppColors.primaryGreen),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Add All to Cart',
-                        style: GoogleFonts.nunitoSans(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: AppColors.primaryGreen,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _shareWishlist();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Share Wishlist',
-                        style: GoogleFonts.nunitoSans(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -399,7 +270,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
     final favoritesService = Provider.of<FavoritesServiceApi>(context, listen: false);
     await favoritesService.removeFromFavorites(product.id);
     
-    // Remove from local list and update UI
     setState(() {
       _favoriteProducts.removeWhere((p) => p.id == product.id);
     });
@@ -421,164 +291,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
             });
           },
         ),
-      ),
-    );
-  }
-
-  void _addAllToCart() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Add to Cart',
-          style: GoogleFonts.nunitoSans(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'Add all ${_favoriteProducts.length} favorite items to your cart?',
-          style: GoogleFonts.nunitoSans(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.nunitoSans(color: Colors.grey),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              
-              final cartService = Provider.of<CartService>(context, listen: false);
-              
-              for (final product in _favoriteProducts) {
-                cartService.addToCart(product, quantity: 1);
-              }
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Added ${_favoriteProducts.length} items to cart!',
-                    style: GoogleFonts.nunitoSans(),
-                  ),
-                  backgroundColor: AppColors.primaryGreen,
-                ),
-              );
-            },
-            child: Text(
-              'Add All',
-              style: GoogleFonts.nunitoSans(color: AppColors.primaryGreen),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _shareWishlist() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Share Your Wishlist',
-              style: GoogleFonts.nunitoSans(
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Let your friends and family know what you are interested in!',
-              style: GoogleFonts.nunitoSans(
-                color: Colors.grey.shade600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildShareButton(
-                  icon: FeatherIcons.messageCircle,
-                  label: 'Message',
-                  color: Colors.blue,
-                ),
-                _buildShareButton(
-                  icon: FeatherIcons.mail,
-                  label: 'Email',
-                  color: Colors.red,
-                ),
-                _buildShareButton(
-                  icon: FeatherIcons.copy,
-                  label: 'Copy Link',
-                  color: Colors.green,
-                ),
-                _buildShareButton(
-                  icon: FeatherIcons.moreHorizontal,
-                  label: 'More',
-                  color: Colors.grey,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildShareButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Shared via $label!',
-              style: GoogleFonts.nunitoSans(),
-            ),
-          ),
-        );
-      },
-      child: Column(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: GoogleFonts.nunitoSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }

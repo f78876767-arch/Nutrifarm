@@ -57,15 +57,18 @@ class BulkProductController extends Controller
                     'price_type' => 'required|in:percentage,fixed'
                 ]);
                 
-                $products = Product::whereIn('id', $productIds)->get();
+                $products = Product::with('variants')->whereIn('id', $productIds)->get();
                 foreach ($products as $product) {
-                    $newPrice = $this->calculateNewPrice(
-                        $product->price, 
-                        $request->price_action,
-                        $request->price_value,
-                        $request->price_type
-                    );
-                    $product->update(['price' => $newPrice]);
+                    // Update all variants for each product
+                    foreach ($product->variants as $variant) {
+                        $newPrice = $this->calculateNewPrice(
+                            $variant->base_price, 
+                            $request->price_action,
+                            $request->price_value,
+                            $request->price_type
+                        );
+                        $variant->update(['base_price' => $newPrice]);
+                    }
                 }
                 break;
                 
@@ -84,23 +87,10 @@ class BulkProductController extends Controller
 
     public function importTemplate()
     {
-        $templatePath = resource_path('templates/products_import_template.xlsx');
-        
-        if (!file_exists($templatePath)) {
-            // Create a basic template
-            $headers = [
-                'Name', 'Description', 'Price', 'Stock Quantity', 'Category', 
-                'SKU', 'Status', 'Weight', 'Image URL'
-            ];
-            
-            // You can create a simple CSV template here
-            $content = implode(',', $headers);
-            return response($content)
-                ->header('Content-Type', 'text/csv')
-                ->header('Content-Disposition', 'attachment; filename="products_import_template.csv"');
-        }
-        
-        return response()->download($templatePath);
+        $templatePath = resource_path('templates/products_import_template.csv');
+        return response()->download($templatePath, 'products_import_template.csv', [
+            'Content-Type' => 'text/csv'
+        ]);
     }
 
     public function import(Request $request)
@@ -112,7 +102,7 @@ class BulkProductController extends Controller
         try {
             Excel::import(new ProductsImport, $request->file('file'));
             return redirect()->back()->with('success', 'Products imported successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return redirect()->back()->with('error', 'Import failed: ' . $e->getMessage());
         }
     }

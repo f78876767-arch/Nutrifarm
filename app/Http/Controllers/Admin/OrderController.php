@@ -9,10 +9,33 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with('user')->latest()->paginate(15);
-        return view('admin.orders.index', compact('orders'));
+        $q = trim((string) $request->get('q'));
+        $status = $request->get('status');
+        $payment = $request->get('payment');
+
+        $orders = Order::with(['user', 'orderProducts'])
+            ->when($q, function ($query) use ($q) {
+                $query->where(function ($qq) use ($q) {
+                    $qq
+                        ->where('external_id', 'like', "%{$q}%")
+                        ->orWhere('invoice_no', 'like', "%{$q}%")
+                        ->orWhere('resi', 'like', "%{$q}%")
+                        ->orWhere('payment_status', 'like', "%{$q}%")
+                        ->orWhereHas('user', function ($uq) use ($q) {
+                            $uq->where('name', 'like', "%{$q}%")
+                               ->orWhere('email', 'like', "%{$q}%");
+                        });
+                });
+            })
+            ->when($status, fn ($query) => $query->where('status', $status))
+            ->when($payment, fn ($query) => $query->where('payment_status', $payment))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.orders.index', compact('orders', 'q', 'status', 'payment'));
     }
 
     public function create()
@@ -31,15 +54,14 @@ class OrderController extends Controller
             'shipping_amount' => 'nullable|numeric|min:0',
             'discount_amount' => 'nullable|numeric|min:0',
             'total_amount' => 'required|numeric|min:0',
-            'status' => 'required|in:pending,processing,shipped,completed,cancelled',
-            'payment_status' => 'required|in:pending,paid,failed,refunded',
+            'status' => 'required|in:pending,processing,shipped,completed,cancelled,expired',
+            'payment_status' => 'required|in:pending,paid,failed,refunded,expired',
             'notes' => 'nullable|string',
         ]);
 
         $order = Order::create([
             'user_id' => $request->user_id,
             'customer_email' => $request->customer_email,
-            'order_number' => 'ORD-' . strtoupper(uniqid()),
             'subtotal_amount' => $request->subtotal_amount,
             'tax_amount' => $request->tax_amount ?? 0,
             'shipping_amount' => $request->shipping_amount ?? 0,
@@ -55,7 +77,13 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        $order->load('user', 'orderProducts.product');
+        $order->load([
+            'user',
+            'orderProducts.product',
+            'orderProducts.variant',
+            'invoice',
+            'histories' => function ($q) { $q->latest(); },
+        ]);
         return view('admin.orders.show', compact('order'));
     }
 
@@ -67,8 +95,8 @@ class OrderController extends Controller
     public function update(Request $request, Order $order)
     {
         $request->validate([
-            'status' => 'required|in:pending,processing,shipped,completed,cancelled',
-            'payment_status' => 'required|in:pending,paid,failed,refunded',
+            'status' => 'required|in:pending,processing,shipped,completed,cancelled,expired',
+            'payment_status' => 'required|in:pending,paid,failed,refunded,expired',
             'notes' => 'nullable|string',
         ]);
 

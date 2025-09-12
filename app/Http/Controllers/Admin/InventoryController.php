@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\Category;
 use App\Models\StockMovement;
+use App\Models\Variant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,12 +19,14 @@ class InventoryController extends Controller
             ->latest()
             ->paginate(20);
         
-        // Include variants in low stock calculation
-        $lowStockCount = Product::where('stock_quantity', '<=', 10)->count();
-        $lowStockVariantsCount = \App\Models\Variant::where('stock', '<=', 10)->where('stock', '>', 0)->count();
+        // Compute low/out of stock based on derived total variant stock per product
+        $allProducts = Product::with('variants')->get();
+        $lowStockCount = $allProducts->filter(fn($p) => $p->total_stock <= 10 && $p->total_stock > 0)->count();
+        $outOfStockCount = $allProducts->filter(fn($p) => $p->total_stock === 0)->count();
         
-        $outOfStockCount = Product::where('stock_quantity', 0)->count();
-        $outOfStockVariantsCount = \App\Models\Variant::where('stock', 0)->count();
+        // Variant-level stats using canonical stock_quantity
+        $lowStockVariantsCount = Variant::where('stock_quantity', '<=', 10)->where('stock_quantity', '>', 0)->count();
+        $outOfStockVariantsCount = Variant::where('stock_quantity', 0)->count();
         
         return view('admin.inventory.index', compact(
             'products', 
@@ -37,14 +39,16 @@ class InventoryController extends Controller
 
     public function alerts()
     {
-        $lowStockProducts = Product::with('category')
-            ->where('stock_quantity', '<=', 10)
-            ->where('stock_quantity', '>', 0)
-            ->get();
+        // Build product alert lists using derived total variant stock
+        $products = Product::with(['category', 'variants'])->get();
+        
+        $lowStockProducts = $products->filter(function ($product) {
+            return $product->total_stock <= 10 && $product->total_stock > 0;
+        })->values();
             
-        $outOfStockProducts = Product::with('category')
-            ->where('stock_quantity', 0)
-            ->get();
+        $outOfStockProducts = $products->filter(function ($product) {
+            return $product->total_stock === 0;
+        })->values();
 
         return view('admin.inventory.alerts', compact('lowStockProducts', 'outOfStockProducts'));
     }
@@ -61,131 +65,82 @@ class InventoryController extends Controller
     public function reports()
     {
         $totalProducts = Product::count();
-        $totalVariants = \App\Models\Variant::count();
+        $totalVariants = Variant::count();
         
-        $totalStock = Product::sum('stock_quantity');
-        $totalVariantStock = \App\Models\Variant::sum('stock');
+        // Total stock units are variant stock quantities (source of truth)
+        $totalStock = (int) Variant::sum('stock_quantity');
         
-        // Calculate stock value including variants
-        $productStockValue = Product::sum(DB::raw('price * stock_quantity'));
-        $variantStockValue = \App\Models\Variant::sum(DB::raw('COALESCE(price, 0) * COALESCE(stock, 0)'));
-        $stockValue = $productStockValue + $variantStockValue;
+        // Calculate stock value from variants only
+        $variantStockValue = (float) DB::table('variants')
+            ->selectRaw('SUM(COALESCE(base_price, 0) * COALESCE(stock_quantity, 0)) as total')
+            ->value('total');
+        $stockValue = $variantStockValue;
         
         $categoryStock = Category::with(['products.variants'])
             ->get()
             ->map(function ($category) {
-                $productStockValue = $category->products->sum(function ($product) {
-                    return $product->price * $product->stock_quantity;
+                $variantsCount = $category->products->sum(fn($product) => $product->variants->count());
+                $totalVariantStock = $category->products->sum(function ($product) {
+                    return $product->variants->sum('stock_quantity');
                 });
-                
                 $variantStockValue = $category->products->sum(function ($product) {
                     return $product->variants->sum(function ($variant) {
-                        return ($variant->price ?: 0) * ($variant->stock ?: 0);
+                        $price = $variant->base_price ?? 0;
+                        $qty = $variant->stock_quantity ?? 0;
+                        return $price * $qty;
                     });
                 });
                 
                 return [
                     'name' => $category->name,
                     'products_count' => $category->products->count(),
-                    'variants_count' => $category->products->sum(function ($product) {
-                        return $product->variants->count();
-                    }),
-                    'total_stock' => $category->products->sum('stock_quantity'),
-                    'total_variant_stock' => $category->products->sum(function ($product) {
-                        return $product->variants->sum('stock');
-                    }),
-                    'stock_value' => $productStockValue + $variantStockValue
+                    'variants_count' => $variantsCount,
+                    // For compatibility with the view structure, set both keys using variant totals
+                    'total_stock' => $totalVariantStock,
+                    'total_variant_stock' => $totalVariantStock,
+                    'stock_value' => $variantStockValue,
                 ];
             });
 
         return view('admin.inventory.reports', compact(
-            'totalProducts', 'totalVariants', 'totalStock', 'totalVariantStock', 'stockValue', 'categoryStock'
+            'totalProducts', 'totalVariants', 'totalStock', 'stockValue', 'categoryStock'
         ));
     }
 
     public function adjustStock(Request $request, Product $product)
     {
-        $request->validate([
-            'adjustment_type' => 'required|in:add,subtract,set',
-            'quantity' => 'required|integer|min:0',
-            'reason' => 'nullable|string|max:255'
-        ]);
-
-        $oldQuantity = $product->stock_quantity;
-        
-        switch ($request->adjustment_type) {
-            case 'add':
-                $newQuantity = $oldQuantity + $request->quantity;
-                break;
-            case 'subtract':
-                $newQuantity = max(0, $oldQuantity - $request->quantity);
-                break;
-            case 'set':
-                $newQuantity = $request->quantity;
-                break;
-        }
-
-        $product->update(['stock_quantity' => $newQuantity]);
-
-        // Record stock movement
-        StockMovement::create([
-            'product_id' => $product->id,
-            'user_id' => auth()->id(),
-            'type' => $request->adjustment_type,
-            'quantity' => $request->quantity,
-            'previous_quantity' => $oldQuantity,
-            'new_quantity' => $newQuantity,
-            'reason' => $request->reason
-        ]);
-
-        return redirect()->back()->with('success', 'Stock adjusted successfully');
+        // Note: Product-level stock is derived; direct adjustments are deprecated.
+        // This endpoint is kept for backward compatibility but will no-op to prevent inconsistent state.
+        return redirect()->back()->with('error', 'Direct product stock adjustment is disabled. Please adjust stock per variant on the product page.');
     }
 
     public function bulkUpdate(Request $request)
     {
-        $request->validate([
-            'products' => 'required|array',
-            'products.*.id' => 'required|exists:products,id',
-            'products.*.stock_quantity' => 'required|integer|min:0'
-        ]);
-
-        foreach ($request->products as $productData) {
-            $product = Product::find($productData['id']);
-            $oldQuantity = $product->stock_quantity;
-            $newQuantity = $productData['stock_quantity'];
-            
-            $product->update(['stock_quantity' => $newQuantity]);
-
-            // Record stock movement
-            StockMovement::create([
-                'product_id' => $product->id,
-                'user_id' => auth()->id(),
-                'type' => 'bulk_update',
-                'quantity' => abs($newQuantity - $oldQuantity),
-                'previous_quantity' => $oldQuantity,
-                'new_quantity' => $newQuantity,
-                'reason' => 'Bulk stock update'
-            ]);
-        }
-
-        return redirect()->back()->with('success', 'Stock quantities updated successfully');
+        // Deprecated: product-level bulk stock updates are disabled in variant-only mode.
+        return redirect()->back()->with('error', 'Bulk product stock update is disabled. Manage stock per variant.');
     }
 
     public function export()
     {
-        $products = Product::with('category')->get();
+        $products = Product::with(['category', 'variants'])->get();
         
         $csvData = [];
-        $csvData[] = ['Product Name', 'SKU', 'Category', 'Stock Quantity', 'Price', 'Stock Value'];
+        $csvData[] = ['Product Name', 'SKU', 'Category', 'Total Stock (Variants)', 'Variant Stock Value'];
         
         foreach ($products as $product) {
+            $totalStock = (int) $product->total_stock;
+            $variantValue = $product->variants->sum(function ($variant) {
+                $price = $variant->base_price ?? 0;
+                $qty = $variant->stock_quantity ?? 0;
+                return $price * $qty;
+            });
+
             $csvData[] = [
                 $product->name,
                 $product->sku,
                 $product->category->name ?? 'N/A',
-                $product->stock_quantity,
-                $product->price,
-                $product->price * $product->stock_quantity
+                $totalStock,
+                $variantValue,
             ];
         }
 

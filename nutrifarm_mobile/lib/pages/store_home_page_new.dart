@@ -16,6 +16,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'dart:async';
+import 'dart:ui' show lerpDouble;
 
 class StoreHomePageNew extends StatefulWidget {
   const StoreHomePageNew({super.key});
@@ -24,7 +25,7 @@ class StoreHomePageNew extends StatefulWidget {
   State<StoreHomePageNew> createState() => _StoreHomePageNewState();
 }
 
-class _StoreHomePageNewState extends State<StoreHomePageNew> {
+class _StoreHomePageNewState extends State<StoreHomePageNew> with TickerProviderStateMixin {
   final List<String> _bannerImages = [
     'assets/images/banner-1.png',
     'assets/images/banner-2.png',
@@ -35,6 +36,7 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> {
   final ScrollController _scrollController = ScrollController();
   Timer? _bannerTimer;
   String _selectedCategory = 'All';
+  final GlobalKey _cartIconKey = GlobalKey();
 
   @override
   void initState() {
@@ -56,6 +58,32 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> {
     _scrollController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  // Fly to cart animation
+  void _animateAddToCart(GlobalKey imageKey) {
+    final overlay = Overlay.of(context);
+    final imageContext = imageKey.currentContext;
+    final cartContext = _cartIconKey.currentContext;
+    if (imageContext == null || cartContext == null) return;
+
+    final imageBox = imageContext.findRenderObject() as RenderBox;
+    final cartBox = cartContext.findRenderObject() as RenderBox;
+
+    final start = imageBox.localToGlobal(Offset.zero);
+    final end = cartBox.localToGlobal(Offset.zero);
+    final imageSize = imageBox.size;
+
+    late OverlayEntry entry; // declare first so closure can capture
+    entry = OverlayEntry(builder: (ctx) {
+      return _AddToCartFlight(
+        start: start,
+        end: end,
+        size: imageSize,
+        onCompleted: () => entry.remove(),
+      );
+    });
+    overlay.insert(entry);
   }
 
   @override
@@ -102,7 +130,7 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> {
       backgroundColor: AppColors.primaryGreen,
       elevation: 0,
       scrolledUnderElevation: 2,
-      automaticallyImplyLeading: false,
+      automaticallyImplyLeading: false, // memastikan tidak ada back button
       title: Row(
         children: [
           Container(
@@ -151,40 +179,37 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> {
           },
         ),
 
-        // Cart Button with Badge
+        // Cart Button with Badge (tambahkan key)
         Consumer<CartService>(
           builder: (context, cartService, child) {
             return Stack(
               children: [
                 IconButton(
-                  icon: const Icon(
-                    FeatherIcons.shoppingBag,
-                    color: Colors.white,
-                  ),
+                  key: _cartIconKey,
+                  icon: const Icon(FeatherIcons.shoppingBag, color: Colors.white),
                   onPressed: () => Navigator.pushNamed(context, '/cart'),
                 ),
                 if (cartService.totalQuantity > 0)
                   Positioned(
                     right: 8,
                     top: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        '${cartService.totalQuantity}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
+                      child: Container(
+                        key: ValueKey(cartService.totalQuantity),
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        textAlign: TextAlign.center,
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Center(
+                          child: Text(
+                            '${cartService.totalQuantity}',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -721,11 +746,11 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> {
   }
 
   Widget _buildProductCard(Product product, {bool isGrid = false}) {
+    final imageKey = GlobalKey();
     return Consumer2<CartService, FavoritesServiceApi>(
       builder: (context, cartService, favService, child) {
         final isFavorite = favService.isFavorite(product.id);
         final isInCart = cartService.isInCart(product.id);
-
         return GestureDetector(
           onTap: () {
             Navigator.push(
@@ -752,10 +777,10 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Product Image & Favorite Button
                 Stack(
                   children: [
                     Container(
+                      key: imageKey,
                       height: 120,
                       width: double.infinity,
                       decoration: const BoxDecoration(
@@ -863,8 +888,6 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> {
                     ),
                   ],
                 ),
-
-                // Product Details
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -928,65 +951,15 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> {
                           ],
                         ),
                         const Spacer(),
-
-                        // Add to Cart Button
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton(
+                          child: _AddToCartButton(
+                            inCart: isInCart,
                             onPressed: () {
                               HapticFeedback.lightImpact();
                               cartService.addToCart(product);
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    isInCart
-                                        ? 'Quantity updated in cart'
-                                        : 'Added to cart',
-                                    style: GoogleFonts.nunitoSans(
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  backgroundColor: AppColors.primaryGreen,
-                                  duration: const Duration(seconds: 1),
-                                ),
-                              );
+                              _animateAddToCart(imageKey);
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isInCart
-                                  ? AppColors.primaryGreen.withOpacity(0.1)
-                                  : AppColors.primaryGreen,
-                              foregroundColor: isInCart
-                                  ? AppColors.primaryGreen
-                                  : Colors.white,
-                              minimumSize: const Size(0, 32),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  isInCart
-                                      ? Icons.check
-                                      : Icons.add_shopping_cart,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  isInCart ? 'In Cart' : 'Add',
-                                  style: GoogleFonts.nunitoSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
                           ),
                         ),
                       ],
@@ -1016,5 +989,122 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> {
       default:
         return FeatherIcons.package;
     }
+  }
+}
+
+// Floating flight widget
+class _AddToCartFlight extends StatefulWidget {
+  final Offset start;
+  final Offset end;
+  final Size size;
+  final VoidCallback onCompleted;
+  const _AddToCartFlight({required this.start, required this.end, required this.size, required this.onCompleted});
+  @override
+  State<_AddToCartFlight> createState() => _AddToCartFlightState();
+}
+
+class _AddToCartFlightState extends State<_AddToCartFlight> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))
+    ..addStatusListener((s) { if (s == AnimationStatus.completed) widget.onCompleted(); })
+    ..forward();
+
+  @override
+  void dispose() { _controller.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = Curves.easeInOut.transform(_controller.value);
+        final x = lerpDouble(widget.start.dx, widget.end.dx, t)!;
+        final midY = (widget.start.dy < widget.end.dy ? widget.start.dy : widget.end.dy) - 80;
+        final y = _quadraticBezier(widget.start.dy, midY, widget.end.dy, t);
+        final scale = 1 - 0.6 * t;
+        return Positioned(
+          left: x,
+          top: y,
+          child: Opacity(
+            opacity: 1 - t * 0.2,
+            child: Transform.scale(
+              scale: scale,
+              child: Container(
+                width: widget.size.width,
+                height: widget.size.height,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.primaryGreen, width: 1),
+                ),
+                child: const Icon(Icons.shopping_bag, color: AppColors.primaryGreen),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  double _quadraticBezier(double p0, double p1, double p2, double t) => (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2;
+}
+
+class _AddToCartButton extends StatefulWidget {
+  final bool inCart;
+  final VoidCallback onPressed;
+  const _AddToCartButton({required this.inCart, required this.onPressed});
+  @override
+  State<_AddToCartButton> createState() => _AddToCartButtonState();
+}
+
+class _AddToCartButtonState extends State<_AddToCartButton> with SingleTickerProviderStateMixin {
+  late AnimationController _pressController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressController = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    super.dispose();
+  }
+
+  void _onTap() async {
+    await _pressController.forward();
+    _pressController.reverse();
+    widget.onPressed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: Tween<double>(begin: 1, end: 0.92).animate(CurvedAnimation(parent: _pressController, curve: Curves.easeOut, reverseCurve: Curves.easeIn)),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: ScaleTransition(scale: anim, child: child)),
+        child: ElevatedButton(
+          key: ValueKey(widget.inCart),
+          onPressed: _onTap,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: widget.inCart ? AppColors.primaryGreen.withOpacity(0.12) : AppColors.primaryGreen,
+            foregroundColor: widget.inCart ? AppColors.primaryGreen : Colors.white,
+            minimumSize: const Size(0, 34),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            elevation: 0,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(widget.inCart ? Icons.check : Icons.add_shopping_cart, size: 16),
+              const SizedBox(width: 4),
+              Text(widget.inCart ? 'In Cart' : 'Add', style: GoogleFonts.nunitoSans(fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -7,6 +7,7 @@ use App\Models\Discount;
 use App\Models\FlashSale;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Helpers\CurrencyHelper;
 
 class PromotionController extends Controller
 {
@@ -76,26 +77,34 @@ class PromotionController extends Controller
                     'id' => $flashSale->id,
                     'title' => $flashSale->title,
                     'description' => $flashSale->description,
-                    'discount_percentage' => $flashSale->discount_percentage,
-                    'max_discount_amount' => $flashSale->max_discount_amount,
+                    'discount_percentage' => (float)$flashSale->discount_percentage,
+                    'max_discount_amount' => $flashSale->max_discount_amount ? (float)$flashSale->max_discount_amount : null,
+                    'max_discount_amount_formatted' => $flashSale->max_discount_amount ? CurrencyHelper::formatRupiah($flashSale->max_discount_amount) : null,
                     'remaining_quantity' => $flashSale->getRemainingQuantity(),
                     'progress_percentage' => $flashSale->getProgressPercentage(),
+                    'starts_at' => $flashSale->starts_at,
+                    'ends_at' => $flashSale->ends_at,
                     'products' => $flashSale->products->map(function ($product) use ($flashSale) {
-                        $originalPrice = $product->price;
-                        $discountAmount = $flashSale->calculateDiscount($originalPrice);
-                        $finalPrice = $originalPrice - $discountAmount;
-                        
+                        $original = (float)$product->price;
+                        $discountAmount = (float)$flashSale->calculateDiscount($original);
+                        $final = max(0, $original - $discountAmount);
+                        $percent = $original > 0 ? round(($discountAmount / $original) * 100, 2) : 0;
                         return [
                             'id' => $product->id,
                             'name' => $product->name,
-                            'original_price' => $originalPrice,
+                            'image_url' => $product->image_url,
+                            'original_price' => $original,
+                            'original_price_formatted' => CurrencyHelper::formatRupiah($original),
                             'discount_amount' => $discountAmount,
-                            'final_price' => $finalPrice,
-                            'image' => $product->image,
+                            'discount_amount_formatted' => CurrencyHelper::formatRupiah($discountAmount),
+                            'discount_percentage' => $percent,
+                            'final_price' => $final,
+                            'final_price_formatted' => CurrencyHelper::formatRupiah($final),
+                            'sold_quantity' => $flashSale->sold_quantity,
+                            'max_quantity' => $flashSale->max_quantity,
+                            'remaining_overall' => $flashSale->getRemainingQuantity(),
                         ];
                     }),
-                    'starts_at' => $flashSale->starts_at,
-                    'ends_at' => $flashSale->ends_at,
                 ];
             })
         ]);

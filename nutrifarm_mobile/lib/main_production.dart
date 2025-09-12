@@ -91,7 +91,7 @@ class _MyAppState extends State<MyApp> {
           '/home': (context) => const MainNavigator(),
           '/favorites': (context) => const MainNavigator(initialIndex: 1),
           '/cart': (context) => const MainNavigator(initialIndex: 2),
-          '/profile': (context) => const MainNavigator(initialIndex: 3),
+          '/profile': (context) => const MainNavigator(initialIndex: 4),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify') {

@@ -14,27 +14,6 @@ use App\Mail\VerificationCodeMail;
 class AuthController extends Controller
 {
     /**
-     * Check email availability (optional separate endpoint)
-     */
-    public function checkEmailAvailability(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email'
-        ]);
-
-        $isAvailable = !User::where('email', $request->email)->exists();
-
-        return response()->json([
-            'success' => true,
-            'email' => $request->email,
-            'available' => $isAvailable,
-            'message' => $isAvailable 
-                ? 'Email is available for registration'
-                : 'This email is already registered'
-        ]);
-    }
-
-    /**
      * Send verification email (Step 1)
      */
     public function sendVerificationEmail(Request $request)
@@ -45,16 +24,7 @@ class AuthController extends Controller
 
         $email = $request->email;
         
-        // Check for duplicate email FIRST before sending verification code
-        if (User::where('email', $email)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This email is already registered. Please use a different email or try logging in.',
-                'error_code' => 'DUPLICATE_EMAIL'
-            ], 422);
-        }
-        
-        // Generate 6-digit verification code
+                // Generate 6-digit verification code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         \Log::info("Generated code: " . $code);
         
@@ -126,21 +96,12 @@ class AuthController extends Controller
     public function registerWithEmailVerification(Request $request)
     {
         $request->validate([
-            'email' => 'required|email', // Removed unique validation since we check at Step 1
+            'email' => 'required|email|unique:users,email',
             'verification_code' => 'required|string|size:6',
             'name' => 'required|string|max:255',
             'password' => 'required|string|min:8',
             'phone' => 'nullable|string|max:20'
         ]);
-
-        // Double-check for duplicate email (defensive programming)
-        if (User::where('email', $request->email)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This email is already registered.',
-                'error_code' => 'DUPLICATE_EMAIL'
-            ], 422);
-        }
 
         // Verify the email verification code
         $verification = EmailVerification::where('email', $request->email)

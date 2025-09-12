@@ -5,10 +5,20 @@ import 'package:local_auth/local_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class SettingsService {
   static final LocalAuthentication _localAuth = LocalAuthentication();
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  
+  // Theme Mode notifier for live theme switching
+  static final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(ThemeMode.light);
+
+  static Future<void> loadThemeMode() async {
+    final enabled = await isDarkModeEnabled();
+    themeModeNotifier.value = enabled ? ThemeMode.dark : ThemeMode.light;
+  }
   
   // Initialize notification settings
   static Future<void> initializeNotifications() async {
@@ -171,6 +181,7 @@ class SettingsService {
   // Dark Mode
   static Future<void> setDarkMode(bool enabled) async {
     await setBoolSetting('dark_mode_enabled', enabled);
+    themeModeNotifier.value = enabled ? ThemeMode.dark : ThemeMode.light;
   }
 
   static Future<bool> isDarkModeEnabled() async {

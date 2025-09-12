@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Message extends Model
 {
     protected $fillable = [
-        'sender_id', 'receiver_id', 'message', 'is_admin',
+        'sender_id', 'receiver_id', 'message', 'is_admin', 'order_id',
     ];
 
     public function sender()
@@ -18,5 +18,10 @@ class Message extends Model
     public function receiver()
     {
         return $this->belongsTo(User::class, 'receiver_id');
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
     }
 }

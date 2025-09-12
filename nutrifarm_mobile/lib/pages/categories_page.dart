@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../widgets/product_card.dart' hide Container;
+import '../widgets/product_card.dart';
 import '../data/product_data.dart';
 import '../theme/app_theme.dart';
 import '../pages/product_detail_page.dart';
 import '../utils/page_transitions.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
+import 'package:lottie/lottie.dart';
 
 class CategoryItem {
   final String name;
@@ -301,18 +302,10 @@ class _CategoriesPageState extends State<CategoriesPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              FeatherIcons.package,
-              size: 40,
-              color: Colors.grey.shade400,
-            ),
+          SizedBox(
+            width: 220,
+            height: 220,
+            child: Lottie.asset('assets/images/empty-ghost.json', repeat: true),
           ),
           const SizedBox(height: 16),
           Text(

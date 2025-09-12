@@ -10,15 +10,21 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'description', 'price', 'stock_quantity', 'image_path', 'is_active', 'is_featured', 'sku', 'discount_price', 'category_id',
+        'name', 'description', 'image_path', 'is_active', 'is_featured', 'category_id',
+        // Legacy fields for backward compatibility (will be deprecated)
+        'sku', 'price', 'stock_quantity', 'discount_price', 'discount_amount'
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
+        // Legacy casts
         'price' => 'decimal:2',
-        'discount_price' => 'decimal:2',
+        'discount_price' => 'decimal:2', 
+        'discount_amount' => 'decimal:2',
     ];
+
+    protected $appends = ['effective_price','is_discount_active', 'total_stock', 'rating_avg', 'rating_count'];
 
     /**
      * Scope for active products
@@ -111,38 +117,98 @@ class Product extends Model
             ->get();
     }
 
+    // Get primary variant (first active variant or fallback)
+    public function primaryVariant()
+    {
+        return $this->variants()->active()->first() ?? $this->variants()->first();
+    }
+
+    // Get cheapest variant price
+    public function getMinPriceAttribute()
+    {
+        $variant = $this->variants()->orderBy('base_price')->first();
+        return $variant ? $variant->effective_price : 0;
+    }
+
+    // Get most expensive variant price  
+    public function getMaxPriceAttribute()
+    {
+        $variant = $this->variants()->orderByDesc('base_price')->first();
+        return $variant ? $variant->effective_price : 0;
+    }
+
+    // Check if any variant has discount
+    public function hasActivePromotions(): bool
+    {
+        return $this->variants()->whereNotNull('discount_amount')
+                   ->where('discount_amount', '>', 0)->exists();
+    }
+
+    // Legacy compatibility - delegate to primary variant
+    public function isDiscountActive(): bool
+    {
+        $primary = $this->primaryVariant();
+        return $primary ? $primary->isDiscountActive() : false;
+    }
+
+    public function getIsDiscountActiveAttribute(): bool
+    {
+        return $this->isDiscountActive();
+    }
+
+    public function getEffectivePriceAttribute(): float
+    {
+        $primary = $this->primaryVariant();
+        return $primary ? $primary->effective_price : 0;
+    }
+
+    // Legacy price - from primary variant or fallback to product price
+    public function getPriceAttribute($value)
+    {
+        $primary = $this->primaryVariant();
+        return $primary ? $primary->base_price : ($value ?? 0);
+    }
+
+    /**
+     * Derived stock: sum of all variant stock quantities.
+     */
+    public function getStockQuantityAttribute($value): int
+    {
+        if ($this->relationLoaded('variants')) {
+            return (int) $this->variants->sum(function ($v) { return (int) ($v->stock_quantity ?? 0); });
+        }
+        return (int) ($this->variants()->sum('stock_quantity'));
+    }
+
+    /**
+     * Alias for clarity in views/APIs.
+     */
+    public function getTotalStockAttribute(): int
+    {
+        return (int) $this->stock_quantity;
+    }
+
     /**
      * Calculate final price after all discounts
      */
     public function getFinalPrice(int $quantity = 1): float
     {
-        $basePrice = $this->price;
-        $totalDiscount = 0;
-
-        // Apply regular discounts
-        $activeDiscounts = $this->getActiveDiscounts();
-        foreach ($activeDiscounts as $discount) {
-            $totalDiscount += $discount->calculateDiscount($basePrice, $quantity);
-        }
-
-        // Apply flash sale discounts (usually higher priority)
-        $activeFlashSales = $this->getActiveFlashSales();
-        foreach ($activeFlashSales as $flashSale) {
-            $flashDiscount = $flashSale->calculateDiscount($basePrice);
-            if ($flashDiscount > $totalDiscount) {
-                $totalDiscount = $flashDiscount; // Use highest discount
-            }
-        }
-
-        return max(0, $basePrice - $totalDiscount);
+        return $this->effective_price;
     }
 
-    /**
-     * Check if product has any active promotions
-     */
-    public function hasActivePromotions(): bool
+    public function reviews()
     {
-        return $this->getActiveDiscounts()->isNotEmpty() || 
-               $this->getActiveFlashSales()->isNotEmpty();
+        return $this->hasMany(Review::class)->where('is_approved', true);
+    }
+
+    public function getRatingAvgAttribute(): float
+    {
+        $avg = $this->reviews()->avg('rating');
+        return $avg ? round((float) $avg, 2) : 0.0;
+    }
+
+    public function getRatingCountAttribute(): int
+    {
+        return (int) $this->reviews()->count();
     }
 }

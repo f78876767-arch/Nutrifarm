@@ -110,7 +110,6 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Stock</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Variants</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Variants</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -144,9 +143,9 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                        {{ $product->stock_quantity > 10 ? 'bg-green-100 text-green-800' : 
-                                           ($product->stock_quantity > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                        {{ $product->stock_quantity }}
+                                        {{ $product->total_stock > 10 ? 'bg-green-100 text-green-800' : 
+                                           ($product->total_stock > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                        {{ $product->total_stock }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -154,7 +153,7 @@
                                         <div class="space-y-1">
                                             @foreach($product->variants->take(3) as $variant)
                                                 <div class="text-xs">
-                                                    {{ $variant->name }}: {{ $variant->stock ?? 0 }}
+                                                    {{ $variant->name }}: {{ $variant->stock_quantity ?? 0 }}
                                                     @if($variant->price)
                                                         ({{ App\Helpers\CurrencyHelper::formatRupiah($variant->price) }})
                                                     @endif
@@ -173,9 +172,6 @@
                                         {{ $product->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                         {{ ucfirst($product->status) }}
                                     </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ $product->variants_count }} variants
                                 </td>
                             </tr>
                             @endforeach

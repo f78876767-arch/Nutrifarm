@@ -10,27 +10,12 @@ class Review extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'product_id',
-        'order_id',
-        'rating',
-        'title',
-        'comment',
-        'is_verified_purchase',
-        'is_approved',
-        'helpful_count',
-        'images',
-        'admin_response',
-        'admin_response_at'
+        'user_id', 'order_id', 'order_product_id', 'product_id', 'variant_id', 'rating', 'comment', 'is_approved'
     ];
 
     protected $casts = [
-        'images' => 'array',
-        'admin_response_at' => 'datetime',
-        'is_verified_purchase' => 'boolean',
-        'is_approved' => 'boolean',
         'rating' => 'integer',
-        'helpful_count' => 'integer'
+        'is_approved' => 'boolean',
     ];
 
     public function user()
@@ -38,33 +23,23 @@ class Review extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function product()
-    {
-        return $this->belongsTo(Product::class);
-    }
-
     public function order()
     {
         return $this->belongsTo(Order::class);
     }
 
-    public function getFormattedRatingAttribute()
+    public function orderProduct()
     {
-        return str_repeat('⭐', $this->rating) . str_repeat('☆', 5 - $this->rating);
+        return $this->belongsTo(OrderProduct::class);
     }
 
-    public function scopeApproved($query)
+    public function product()
     {
-        return $query->where('is_approved', true);
+        return $this->belongsTo(Product::class);
     }
 
-    public function scopeVerifiedPurchase($query)
+    public function variant()
     {
-        return $query->where('is_verified_purchase', true);
-    }
-
-    public function scopeByRating($query, $rating)
-    {
-        return $query->where('rating', $rating);
+        return $this->belongsTo(Variant::class);
     }
 }

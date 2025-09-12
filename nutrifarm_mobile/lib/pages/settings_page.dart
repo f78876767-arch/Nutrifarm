@@ -4,10 +4,14 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/settings_service.dart';
+import '../services/push_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:local_auth/local_auth.dart';
+import '../widgets/app_dialog.dart';
+import '../widgets/app_alert.dart';
+import 'edit_profile_page.dart';
+import 'address_list_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -51,22 +55,27 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold
+    (
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: isDark ? Theme.of(context).appBarTheme.backgroundColor : Colors.white,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(FeatherIcons.arrowLeft, color: AppColors.primaryGreen),
+          icon: Icon(FeatherIcons.arrowLeft, color: isDark ? Colors.white : Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Pengaturan',
           style: GoogleFonts.nunitoSans(
-            fontSize: 24,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: AppColors.primaryGreen,
+            color: isDark ? Colors.white : Colors.black,
           ),
         ),
       ),
@@ -84,7 +93,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 subtitle: 'Ubah nama, email, dan foto profil',
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  // Navigate to profile edit
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const EditProfilePage()),
+                  );
                 },
               ),
               _buildSettingsTile(
@@ -93,16 +105,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 subtitle: 'Kelola alamat pengiriman Anda',
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  // Navigate to address management
-                },
-              ),
-              _buildSettingsTile(
-                icon: FeatherIcons.creditCard,
-                title: 'Metode Pembayaran',
-                subtitle: 'Tambah atau edit metode pembayaran',
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  // Navigate to payment methods
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AddressListPage()),
+                  );
                 },
               ),
             ]),
@@ -117,8 +123,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 value: _notificationsEnabled,
                 onChanged: (value) async {
                   if (value) {
+                    // Ensure local notifications system is initialized
+                    await SettingsService.initializeNotifications();
                     final granted = await SettingsService.requestNotificationPermission();
                     if (granted) {
+                      // Initialize FCM push (requests permission on iOS and registers token)
+                      await PushService.initialize();
                       setState(() => _notificationsEnabled = true);
                       await _saveSettings();
                       await SettingsService.showTestNotification();
@@ -127,8 +137,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       _showErrorSnackBar('Izin notifikasi ditolak');
                     }
                   } else {
+                    // Disable local flag and unregister token from backend
                     setState(() => _notificationsEnabled = false);
                     await _saveSettings();
+                    await PushService.logoutCleanup();
                   }
                   HapticFeedback.lightImpact();
                 },
@@ -209,15 +221,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 subtitle: _selectedLanguage,
                 onTap: () => _showLanguageDialog(),
               ),
-              _buildSettingsTile(
-                icon: FeatherIcons.dollarSign,
-                title: 'Mata Uang',
-                subtitle: 'IDR (Rupiah)',
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  // Show currency selection
-                },
-              ),
             ]),
 
             // Support Section
@@ -290,7 +293,7 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Text(
                 'Nutrifarm v1.0.0',
                 style: GoogleFonts.nunitoSans(
-                  color: AppColors.onSurfaceVariant,
+                  color: scheme.onSurfaceVariant,
                   fontSize: 12,
                 ),
               ),
@@ -302,23 +305,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: GoogleFonts.nunitoSans()),
-        backgroundColor: AppColors.primaryGreen,
-        duration: Duration(seconds: 3),
-      ),
-    );
+    AppAlert.showSuccess(context, message);
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: GoogleFonts.nunitoSans()),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
-      ),
-    );
+    AppAlert.showError(context, message);
   }
 
   Widget _buildSectionHeader(String title) {
@@ -336,17 +327,20 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildSettingsCard(List<Widget> children) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Column(
         children: children,
@@ -362,6 +356,7 @@ class _SettingsPageState extends State<SettingsPage> {
     Color? textColor,
     Widget? trailing,
   }) {
+    final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -393,7 +388,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: GoogleFonts.nunitoSans(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: textColor ?? AppColors.onSurface,
+                        color: textColor ?? scheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -401,7 +396,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       subtitle,
                       style: GoogleFonts.nunitoSans(
                         fontSize: 13,
-                        color: AppColors.onSurfaceVariant,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -409,7 +404,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               trailing ?? Icon(
                 FeatherIcons.chevronRight,
-                color: AppColors.onSurfaceVariant,
+                color: scheme.onSurfaceVariant,
                 size: 16,
               ),
             ],
@@ -439,99 +434,84 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _showLanguageDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Pilih Bahasa',
-          style: GoogleFonts.nunitoSans(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppColors.onSurface,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildLanguageOption(String lang) {
+    final selected = _selectedLanguage == lang;
+    return InkWell(
+      onTap: () async {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedLanguage = lang);
+        await _saveSettings();
+        if (mounted) Navigator.of(context).pop();
+        _showSuccessSnackBar('Bahasa diubah ke $lang');
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        child: Row(
           children: [
-            _buildLanguageOption('Bahasa Indonesia'),
-            _buildLanguageOption('English'),
-            _buildLanguageOption('العربية'),
+            Expanded(
+              child: Text(
+                lang,
+                style: GoogleFonts.nunitoSans(
+                  fontSize: 16,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: selected ? AppColors.primaryGreen : AppColors.onSurface,
+                ),
+              ),
+            ),
+            if (selected)
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+                child: Text(
+                  'Terpilih',
+                  style: GoogleFonts.nunitoSans(
+                    fontSize: 12,
+                    color: AppColors.primaryGreen,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildLanguageOption(String language) {
-    return RadioListTile<String>(
-      title: Text(
-        language,
-        style: GoogleFonts.nunitoSans(
-          fontSize: 16,
-          color: AppColors.onSurface,
-        ),
+  void _showLanguageDialog() {
+    AppDialog.showInfo(
+      context,
+      title: 'Pilih Bahasa',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildLanguageOption('Bahasa Indonesia'),
+          _buildLanguageOption('English'),
+          _buildLanguageOption('العربية'),
+        ],
       ),
-      value: language,
-      groupValue: _selectedLanguage,
-      onChanged: (value) {
-        setState(() => _selectedLanguage = value!);
-        _saveSettings();
-        Navigator.pop(context);
-        HapticFeedback.lightImpact();
-      },
-      activeColor: AppColors.primaryGreen,
     );
   }
 
   void _showAboutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Tentang Nutrifarm',
-          style: GoogleFonts.nunitoSans(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppColors.onSurface,
+    AppDialog.showInfo(
+      context,
+      title: 'Tentang Nutrifarm',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Nutrifarm Mobile App',
+            style: GoogleFonts.nunitoSans(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurface),
           ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Nutrifarm Mobile App',
-              style: GoogleFonts.nunitoSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Versi: 1.0.0\nDikembangkan oleh Tim Nutrifarm\n\n© 2024 Nutrifarm. All rights reserved.',
-              style: GoogleFonts.nunitoSans(
-                fontSize: 14,
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Tutup',
-              style: GoogleFonts.nunitoSans(
-                color: AppColors.primaryGreen,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          const SizedBox(height: 8),
+          Text(
+            'Versi: 1.0.0\nDikembangkan oleh Tim Nutrifarm\n\n© 2024 Nutrifarm. All rights reserved.',
+            style: GoogleFonts.nunitoSans(fontSize: 14, color: AppColors.onSurfaceVariant),
           ),
         ],
       ),
@@ -542,158 +522,51 @@ class _SettingsPageState extends State<SettingsPage> {
     HapticFeedback.lightImpact();
     
     // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              'Menghapus cache...',
-              style: GoogleFonts.nunitoSans(
-                fontSize: 16,
-                color: AppColors.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    AppDialog.showLoading(context, message: 'Menghapus cache...');
 
     // Simulate cache clearing
     await Future.delayed(const Duration(seconds: 2));
     
     Navigator.pop(context); // Close loading dialog
     
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Cache berhasil dihapus',
-          style: GoogleFonts.nunitoSans(),
-        ),
-        backgroundColor: AppColors.primaryGreen,
-      ),
-    );
+    // Show success alert
+    AppAlert.showSuccess(context, 'Cache berhasil dihapus');
   }
 
   Future<void> _logout() async {
     HapticFeedback.lightImpact();
     
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Keluar Akun',
-          style: GoogleFonts.nunitoSans(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppColors.onSurface,
-          ),
-        ),
-        content: Text(
-          'Apakah Anda yakin ingin keluar dari akun?',
-          style: GoogleFonts.nunitoSans(
-            fontSize: 16,
-            color: AppColors.onSurfaceVariant,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Batal',
-              style: GoogleFonts.nunitoSans(
-                color: AppColors.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final authService = Provider.of<AuthService>(context, listen: false);
-              await authService.logout();
-              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(
-              'Keluar',
-              style: GoogleFonts.nunitoSans(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+    final confirm = await AppDialog.showConfirm(
+      context,
+      title: 'Keluar Akun',
+      message: 'Apakah Anda yakin ingin keluar dari akun?',
     );
+    if (confirm == true) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.logout();
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      }
+    }
   }
 
   void _showDeleteAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Hapus Akun',
-          style: GoogleFonts.nunitoSans(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppColors.error,
+    AppDialog.showConfirm(
+      context,
+      title: 'Hapus Akun',
+      message: 'Tindakan ini tidak dapat dibatalkan. Semua data Anda akan dihapus permanen.',
+      confirmText: 'Hapus',
+      destructive: true,
+    ).then((confirm) {
+      if (confirm == true) {
+        // Implement account deletion logic
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fitur hapus akun akan segera tersedia', style: GoogleFonts.nunitoSans()),
+            backgroundColor: AppColors.primaryGreen,
           ),
-        ),
-        content: Text(
-          'Tindakan ini tidak dapat dibatalkan. Semua data Anda akan dihapus permanen.',
-          style: GoogleFonts.nunitoSans(
-            fontSize: 16,
-            color: AppColors.onSurfaceVariant,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Batal',
-              style: GoogleFonts.nunitoSans(
-                color: AppColors.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Implement account deletion logic
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Fitur hapus akun akan segera tersedia',
-                    style: GoogleFonts.nunitoSans(),
-                  ),
-                  backgroundColor: AppColors.primaryGreen,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(
-              'Hapus',
-              style: GoogleFonts.nunitoSans(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
+        );
+      }
+    });
   }
 }

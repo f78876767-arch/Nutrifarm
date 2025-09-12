@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:http/http.dart' as http;
 
 class EmailResult {
@@ -109,12 +108,6 @@ class EmailService {
   Future<EmailResult> resendVerificationEmail(String email) async {
     // Just call the main send method
     return await sendVerificationEmail(email);
-  }
-  
-  /// Generate a 6-digit verification code
-  String _generateVerificationCode() {
-    final random = Random();
-    return (100000 + random.nextInt(900000)).toString();
   }
   
   /// Get stored verification code (for testing purposes only)

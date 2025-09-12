@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'widgets/main_navigator.dart';
-import 'pages/onboarding_screen.dart';
+// Removed unused onboarding import for development build
 import 'pages/loading_screen.dart';
 import 'pages/register_page.dart';
 import 'pages/login_page.dart';
@@ -91,7 +91,8 @@ class _MyAppState extends State<MyApp> {
           '/home': (context) => const MainNavigator(),
           '/favorites': (context) => const MainNavigator(initialIndex: 1),
           '/cart': (context) => const MainNavigator(initialIndex: 2),
-          '/profile': (context) => const MainNavigator(initialIndex: 3),
+          // Align with profile tab index 4
+          '/profile': (context) => const MainNavigator(initialIndex: 4),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/verify') {

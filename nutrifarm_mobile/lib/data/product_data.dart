@@ -6,6 +6,8 @@ class ProductData {
   static List<Product>? _cachedProducts;
   static List<String>? _cachedCategories;
   static DateTime? _lastFetch;
+  static List<Product>? _cachedDiscounted;
+  static List<Product>? _cachedRegular;
   
   // Cache duration (5 minutes)
   static const Duration _cacheDuration = Duration(minutes: 5);
@@ -121,10 +123,41 @@ class ProductData {
     return products.where((product) => product.discountPrice != null).toList();
   }
 
+  static Future<void> _loadSegmentedIfNeeded() async {
+    if (_cachedDiscounted != null && _cachedRegular != null &&
+        _lastFetch != null && DateTime.now().difference(_lastFetch!) < _cacheDuration) {
+      return;
+    }
+    try {
+      final segmented = await ApiService.getProductsSegmented();
+      _cachedDiscounted = segmented['discounted'] ?? [];
+      _cachedRegular = segmented['regular'] ?? [];
+      _cachedProducts = [..._cachedDiscounted!, ..._cachedRegular!];
+      _lastFetch = DateTime.now();
+    } catch (e) {
+      // fallback: use existing getProducts (which also caches)
+      final all = await getProducts();
+      _cachedDiscounted = all.where((p) => p.hasDiscount).toList();
+      _cachedRegular = all.where((p) => !p.hasDiscount).toList();
+    }
+  }
+
+  static Future<List<Product>> getDiscountedSegmented() async {
+    await _loadSegmentedIfNeeded();
+    return _cachedDiscounted ?? [];
+  }
+
+  static Future<List<Product>> getRegularSegmented() async {
+    await _loadSegmentedIfNeeded();
+    return _cachedRegular ?? [];
+  }
+
   // Clear cache (useful for refresh functionality)
   static void clearCache() {
     _cachedProducts = null;
     _cachedCategories = null;
+    _cachedDiscounted = null;
+    _cachedRegular = null;
     _lastFetch = null;
   }
 

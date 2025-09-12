@@ -11,10 +11,26 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::with('categories')->paginate(15);
-        return view('admin.products.index', compact('products'));
+        $q = trim((string) $request->get('q'));
+        $active = $request->get('active');
+
+        $products = Product::with('categories')
+            ->when($q, function ($query) use ($q) {
+                $query->where(function ($qq) use ($q) {
+                    $qq->where('name', 'like', "%{$q}%")
+                       ->orWhere('sku', 'like', "%{$q}%");
+                });
+            })
+            ->when($active !== null && $active !== '', function ($query) use ($active) {
+                $query->where('is_active', (bool) $active);
+            })
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.products.index', compact('products', 'q', 'active'));
     }
 
     public function create()
@@ -29,9 +45,6 @@ class ProductController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0',
-            'sku' => 'nullable|string|max:100|unique:products,sku',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'image_path' => 'nullable|image|max:2048',
@@ -39,11 +52,18 @@ class ProductController extends Controller
             'variants.*.name' => 'required_with:variants.*.value|string|max:255',
             'variants.*.value' => 'required_with:variants.*.name|string|max:255',
             'variants.*.unit' => 'nullable|string|max:32',
-            'variants.*.price' => 'nullable|numeric|min:0',
-            'variants.*.stock' => 'nullable|integer|min:0',
+            'variants.*.base_price' => 'nullable|numeric|min:0',
+            'variants.*.stock_quantity' => 'nullable|integer|min:0',
+            'variants.*.discount_amount' => 'nullable|numeric|min:0',
+            'variants.*.sku' => 'nullable|string|max:100|unique:variants,sku',
+            'variants.*.weight' => 'nullable|numeric|min:0',
+            // Legacy fields for backward compatibility
+            'price' => 'nullable|numeric|min:0',
+            'sku' => 'nullable|string|max:100',
+            'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
-        $productData = $request->only(['name', 'description', 'price', 'stock_quantity', 'sku']);
+        $productData = $request->only(['name', 'description']);
         $productData['is_active'] = $request->has('is_active');
         $productData['is_featured'] = $request->has('is_featured');
 
@@ -58,7 +78,7 @@ class ProductController extends Controller
             $product->categories()->sync($request->categories);
         }
 
-        // Create variants if provided
+        // Create variants
         if ($request->has('variants')) {
             foreach ($request->variants as $variantData) {
                 if (!empty($variantData['name']) && !empty($variantData['value'])) {
@@ -66,11 +86,26 @@ class ProductController extends Controller
                         'name' => $variantData['name'],
                         'value' => $variantData['value'],
                         'unit' => $variantData['unit'] ?? null,
-                        'price' => $variantData['price'] ?? null,
-                        'stock' => $variantData['stock'] ?? null,
+                        'base_price' => isset($variantData['base_price']) ? preg_replace('/[^\d.]/', '', $variantData['base_price']) : null,
+                        'stock_quantity' => $variantData['stock_quantity'] ?? 0,
+                        'discount_amount' => isset($variantData['discount_amount']) ? preg_replace('/[^\d.]/', '', $variantData['discount_amount']) : null,
+                        'sku' => $variantData['sku'] ?? null,
+                        'weight' => $variantData['weight'] ?? null,
+                        'is_active' => true,
                     ]);
                 }
             }
+        } else {
+            // Ensure at least one default variant exists
+            $product->variants()->create([
+                'name' => 'Default',
+                'value' => 'Standard',
+                'base_price' => isset($request->price) ? preg_replace('/[^\d.]/', '', $request->price) : 0,
+                'stock_quantity' => 0,
+                'discount_amount' => isset($request->discount_amount) ? preg_replace('/[^\d.]/', '', $request->discount_amount) : null,
+                'sku' => $request->sku,
+                'is_active' => true,
+            ]);
         }
 
         return redirect()->route('admin.products.index')->with('success', 'Product created successfully');
@@ -95,9 +130,6 @@ class ProductController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0',
-            'sku' => 'nullable|string|max:100|unique:products,sku,' . $product->id,
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'image_path' => 'nullable|image|max:2048',
@@ -105,11 +137,18 @@ class ProductController extends Controller
             'variants.*.name' => 'required_with:variants.*.value|string|max:255',
             'variants.*.value' => 'required_with:variants.*.name|string|max:255',
             'variants.*.unit' => 'nullable|string|max:32',
-            'variants.*.price' => 'nullable|numeric|min:0',
-            'variants.*.stock' => 'nullable|integer|min:0',
+            'variants.*.base_price' => 'nullable|numeric|min:0',
+            'variants.*.stock_quantity' => 'nullable|integer|min:0',
+            'variants.*.discount_amount' => 'nullable|numeric|min:0',
+            'variants.*.sku' => 'nullable|string|max:100',
+            'variants.*.weight' => 'nullable|numeric|min:0',
+            // Legacy fields for backward compatibility
+            'price' => 'nullable|numeric|min:0',
+            'sku' => 'nullable|string|max:100',
+            'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
-        $productData = $request->only(['name', 'description', 'price', 'stock_quantity', 'sku']);
+        $productData = $request->only(['name', 'description']);
         $productData['is_active'] = $request->has('is_active');
         $productData['is_featured'] = $request->has('is_featured');
 
@@ -128,8 +167,8 @@ class ProductController extends Controller
             $product->categories()->sync($request->categories);
         }
 
-        // Update variants
-        $product->variants()->delete(); // Remove existing variants
+        // Replace variants with submitted list
+        $product->variants()->delete();
         if ($request->has('variants')) {
             foreach ($request->variants as $variantData) {
                 if (!empty($variantData['name']) && !empty($variantData['value'])) {
@@ -137,11 +176,26 @@ class ProductController extends Controller
                         'name' => $variantData['name'],
                         'value' => $variantData['value'],
                         'unit' => $variantData['unit'] ?? null,
-                        'price' => $variantData['price'] ?? null,
-                        'stock' => $variantData['stock'] ?? null,
+                        'base_price' => isset($variantData['base_price']) ? preg_replace('/[^\d.]/', '', $variantData['base_price']) : null,
+                        'stock_quantity' => $variantData['stock_quantity'] ?? 0,
+                        'discount_amount' => isset($variantData['discount_amount']) ? preg_replace('/[^\d.]/', '', $variantData['discount_amount']) : null,
+                        'sku' => $variantData['sku'] ?? null,
+                        'weight' => $variantData['weight'] ?? null,
+                        'is_active' => true,
                     ]);
                 }
             }
+        } else {
+            // Ensure at least one default variant exists
+            $product->variants()->create([
+                'name' => 'Default',
+                'value' => 'Standard',
+                'base_price' => isset($request->price) ? preg_replace('/[^\d.]/', '', $request->price) : 0,
+                'stock_quantity' => 0,
+                'discount_amount' => isset($request->discount_amount) ? preg_replace('/[^\d.]/', '', $request->discount_amount) : null,
+                'sku' => $request->sku,
+                'is_active' => true,
+            ]);
         }
 
         return redirect()->route('admin.products.index')->with('success', 'Product updated successfully');
@@ -151,5 +205,20 @@ class ProductController extends Controller
     {
         $product->delete();
         return redirect()->route('admin.products.index')->with('success', 'Product deleted successfully');
+    }
+
+    public function toggleDiscount(Product $product)
+    {
+        $primaryVariant = $product->primaryVariant();
+        
+        if (!$primaryVariant) {
+            return response()->json(['success' => false, 'message' => 'Produk tidak memiliki varian'], 400);
+        }
+        
+        if ($primaryVariant->isDiscountActive()) {
+            $primaryVariant->update(['discount_amount' => null]);
+            return response()->json(['success' => true, 'message' => 'Diskon dimatikan']);
+        }
+        return response()->json(['success' => false, 'message' => 'Tidak ada diskon aktif untuk dimatikan'], 400);
     }
 }

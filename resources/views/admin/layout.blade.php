@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Admin') - Nutrifarm</title>
+    <!-- Added CSRF token for AJAX -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -37,10 +39,28 @@
                 <!-- Logo -->
                 <div class="flex items-center justify-center h-16 px-4 bg-primary-900 border-b border-primary-700">
                     <div class="flex items-center space-x-2">
-                        <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                            <i class="fas fa-leaf text-primary-600 text-lg"></i>
-                        </div>
-                        <h1 class="text-xl font-bold text-white">Nutrifarm</h1>
+                        @php
+                            $brandLogo = config('app.brand_logo') ?: env('APP_BRAND_LOGO');
+                            $candidates = array_filter([
+                                $brandLogo, // allow override via config/app.php or .env
+                                'images/nutrifarm-logo.png',
+                                'image/nutrifarm-logo.png', // handle singular folder too
+                                'images/logo.png',
+                                'image/logo.png',
+                            ]);
+                            $logoPath = null;
+                            foreach ($candidates as $candidate) {
+                                if ($candidate && file_exists(public_path($candidate))) { $logoPath = $candidate; break; }
+                            }
+                        @endphp
+                        @if($logoPath)
+                            <img src="{{ asset($logoPath) }}?v={{ @filemtime(public_path($logoPath)) }}" alt="Nutrifarm" class="h-8 w-auto">
+                        @else
+                            <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                                <i class="fas fa-leaf text-primary-600 text-lg"></i>
+                            </div>
+                            <h1 class="text-xl font-bold text-white">Nutrifarm</h1>
+                        @endif
                     </div>
                 </div>
 
@@ -65,14 +85,6 @@
                     <a href="{{ route('admin.orders.index') }}" class="flex items-center px-4 py-3 text-white rounded-lg hover:bg-primary-700 transition-colors {{ request()->routeIs('admin.orders.*') ? 'bg-primary-700 shadow-md' : '' }}">
                         <i class="fas fa-shopping-cart w-5"></i>
                         <span class="ml-3">Orders</span>
-                    </a>
-                    <a href="{{ route('admin.discounts.index') }}" class="flex items-center px-4 py-3 text-white rounded-lg hover:bg-primary-700 transition-colors {{ request()->routeIs('admin.discounts.*') ? 'bg-primary-700 shadow-md' : '' }}">
-                        <i class="fas fa-percent w-5"></i>
-                        <span class="ml-3">Discounts</span>
-                    </a>
-                    <a href="{{ route('admin.flash-sales.index') }}" class="flex items-center px-4 py-3 text-white rounded-lg hover:bg-primary-700 transition-colors {{ request()->routeIs('admin.flash-sales.*') ? 'bg-primary-700 shadow-md' : '' }}">
-                        <i class="fas fa-bolt w-5"></i>
-                        <span class="ml-3">Flash Sales</span>
                     </a>
                     
                     <!-- Inventory Management Section -->

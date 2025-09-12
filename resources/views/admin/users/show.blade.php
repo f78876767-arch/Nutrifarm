@@ -93,7 +93,7 @@
                         <div class="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <h3 class="text-lg font-medium text-gray-900">Order #{{ $order->order_number }}</h3>
+                                    <h3 class="text-lg font-medium text-gray-900">Order #{{ $order->invoice_no ?? $order->external_id ?? $order->id }}</h3>
                                     <p class="text-sm text-gray-600">{{ $order->items->count() }} items</p>
                                     <div class="mt-2 flex items-center space-x-4">
                                         <span class="text-sm font-medium text-green-600">${{ number_format($order->total_amount, 2) }}</span>

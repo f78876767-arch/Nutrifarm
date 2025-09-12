@@ -101,7 +101,7 @@
                         <div class="ml-5 w-0 flex-1">
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Variant Stock</dt>
-                                <dd class="text-lg font-medium text-gray-900">{{ number_format($totalVariantStock ?? 0) }}</dd>
+                                <dd class="text-lg font-medium text-gray-900">{{ number_format($totalStock ?? 0) }}</dd>
                             </dl>
                         </div>
                     </div>
@@ -145,13 +145,7 @@
                                     {{ number_format($category['variants_count'] ?? 0) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ number_format($category['total_stock'] + ($category['total_variant_stock'] ?? 0)) }}
-                                    @if(isset($category['total_variant_stock']) && $category['total_variant_stock'] > 0)
-                                        <div class="text-xs text-gray-500">
-                                            Base: {{ number_format($category['total_stock']) }} | 
-                                            Variants: {{ number_format($category['total_variant_stock']) }}
-                                        </div>
-                                    @endif
+                                    {{ number_format($category['total_stock']) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ App\Helpers\CurrencyHelper::formatRupiah($category['stock_value']) }}
@@ -178,7 +172,7 @@
                                     {{ number_format($totalVariants ?? 0) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {{ number_format($totalStock + ($totalVariantStock ?? 0)) }}
+                                    {{ number_format($totalStock) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     {{ App\Helpers\CurrencyHelper::formatRupiah($stockValue) }}

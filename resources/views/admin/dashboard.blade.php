@@ -71,20 +71,8 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-600 text-sm font-medium">Flash Sales</p>
-                    <p class="text-2xl font-bold text-gray-800">{{ $stats['flash_sales'] }}</p>
-                </div>
-                <div class="bg-red-100 rounded-full p-3">
-                    <i class="fas fa-bolt text-red-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow">
-            <div class="flex items-center justify-between">
-                <div>
                     <p class="text-gray-600 text-sm font-medium">Revenue Today</p>
-                    <p class="text-2xl font-bold text-gray-800">$0.00</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ App\Helpers\CurrencyHelper::formatRupiah($stats['revenue_today'] ?? 0) }}</p>
                 </div>
                 <div class="bg-green-100 rounded-full p-3">
                     <i class="fas fa-dollar-sign text-green-600 text-xl"></i>
@@ -109,14 +97,6 @@
                 <a href="{{ route('admin.categories.create') }}" class="flex items-center p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors group">
                     <i class="fas fa-plus text-blue-500 mr-3"></i>
                     <span class="text-gray-700 group-hover:text-blue-700">Add New Category</span>
-                </a>
-                <a href="{{ route('admin.discounts.create') }}" class="flex items-center p-3 rounded-lg bg-yellow-50 hover:bg-yellow-100 transition-colors group">
-                    <i class="fas fa-plus text-yellow-500 mr-3"></i>
-                    <span class="text-gray-700 group-hover:text-yellow-700">Create Discount</span>
-                </a>
-                <a href="{{ route('admin.flash-sales.create') }}" class="flex items-center p-3 rounded-lg bg-red-50 hover:bg-red-100 transition-colors group">
-                    <i class="fas fa-plus text-red-500 mr-3"></i>
-                    <span class="text-gray-700 group-hover:text-red-700">Create Flash Sale</span>
                 </a>
             </div>
         </div>

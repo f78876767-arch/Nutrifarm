@@ -17,6 +17,29 @@
         </div>
     </div>
 
+    <form method="GET" action="{{ route('admin.products.index') }}" class="mb-4 bg-white p-4 rounded-md shadow flex flex-wrap items-end gap-3">
+        <div>
+            <label class="block text-xs text-gray-600 mb-1">Search</label>
+            <input type="text" name="q" value="{{ $q ?? '' }}" placeholder="Name or SKU..." class="border rounded px-3 py-2 w-64">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-600 mb-1">Active</label>
+            <select name="active" class="border rounded px-3 py-2">
+                <option value="">All</option>
+                <option value="1" @selected(($active ?? '') === '1')>Active</option>
+                <option value="0" @selected(($active ?? '') === '0')>Inactive</option>
+            </select>
+        </div>
+        <div>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">Filter</button>
+        </div>
+        @if(($q ?? false) || ($active ?? false))
+        <div>
+            <a href="{{ route('admin.products.index') }}" class="text-sm text-gray-600">Reset</a>
+        </div>
+        @endif
+    </form>
+
 <div class="bg-white shadow overflow-hidden sm:rounded-md">
     <ul class="divide-y divide-gray-200">
         @forelse($products as $product)
@@ -33,10 +56,15 @@
                         <div class="ml-4">
                             <div class="text-sm font-medium text-gray-900">{{ $product->name }}</div>
                             <div class="text-sm text-gray-500">
-                                Rp {{ number_format($product->price, 0, ',', '.') }} • Stock: {{ $product->stock_quantity }}
-                                @if($product->categories->count())
-                                    • {{ $product->categories->pluck('name')->implode(', ') }}
+                                @php($effective = $product->effective_price ?? $product->price)
+                                @if($product->isDiscountActive())
+                                    <span class="line-through text-gray-400 mr-1">Rp {{ number_format($product->price,0,',','.') }}</span>
+                                    <span class="text-green-700 font-semibold">Rp {{ number_format($effective,0,',','.') }}</span>
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Diskon</span>
+                                @else
+                                    Rp {{ number_format($product->price,0,',','.') }}
                                 @endif
+                                • Stock (sum): {{ $product->total_stock }}
                             </div>
                         </div>
                     </div>
@@ -49,6 +77,9 @@
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                 Inactive
                             </span>
+                        @endif
+                        @if($product->isDiscountActive())
+                            <button type="button" onclick="toggleDiscount({{ $product->id }})" class="text-red-600 hover:text-red-900 text-sm font-medium">Matikan Diskon</button>
                         @endif
                         <a href="{{ route('admin.products.show', $product) }}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">View</a>
                         <a href="{{ route('admin.products.edit', $product) }}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">Edit</a>
@@ -76,7 +107,18 @@
 
 @if($products->hasPages())
     <div class="mt-6">
-        {{ $products->links() }}
+        {{ $products->appends(['q' => $q, 'active' => $active])->links() }}
     </div>
 @endif
+<script>
+async function toggleDiscount(id){
+    if(!confirm('Matikan diskon produk ini?')) return;
+    try {
+        const res = await fetch(`{{ url('simple-admin/products') }}/${id}/toggle-discount`, {method:'PATCH', headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json'}});
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.message||'Gagal');
+        location.reload();
+    } catch(e){ alert(e.message); }
+}
+</script>
 @endsection

@@ -9,31 +9,41 @@ import 'settings_page.dart';
 import 'order_history_page.dart';
 import 'edit_profile_page.dart';
 import 'address_list_page.dart';
+import '../widgets/custom_bottom_nav_bar.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final bool canPop = ModalRoute.of(context)?.canPop == true;
     return Scaffold(
+      // Match global background
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        // Match cart page app bar style
+        backgroundColor: Colors.white,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        centerTitle: true,
         automaticallyImplyLeading: false,
+        leading: canPop
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios, size: 20, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: Text(
           'Profil',
           style: GoogleFonts.nunitoSans(
-            color: AppColors.primaryGreen,
-            fontSize: 24,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
+            color: Colors.black,
           ),
         ),
-        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(FeatherIcons.settings, color: AppColors.primaryGreen),
+            icon: const Icon(FeatherIcons.settings, color: Colors.black),
             onPressed: () {
               HapticFeedback.lightImpact();
               Navigator.push(
@@ -58,8 +68,8 @@ class ProfilePage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.onSurface.withOpacity(0.05),
-                    blurRadius: 10,
+                    color: AppColors.primaryGreen.withOpacity(0.08),
+                    blurRadius: 12,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -74,7 +84,7 @@ class ProfilePage extends StatelessWidget {
                         'Informasi Profil',
                         style: GoogleFonts.nunitoSans(
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700, // stronger like other pages
                           color: AppColors.onSurface,
                         ),
                       ),
@@ -206,8 +216,8 @@ class ProfilePage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.onSurface.withOpacity(0.05),
-                    blurRadius: 10,
+                    color: AppColors.primaryGreen.withOpacity(0.08),
+                    blurRadius: 12,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -219,7 +229,7 @@ class ProfilePage extends StatelessWidget {
                     'Aktivitas Anda',
                     style: GoogleFonts.nunitoSans(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
                     ),
                   ),
@@ -248,8 +258,8 @@ class ProfilePage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.onSurface.withOpacity(0.05),
-                    blurRadius: 10,
+                    color: AppColors.primaryGreen.withOpacity(0.08),
+                    blurRadius: 12,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -261,7 +271,7 @@ class ProfilePage extends StatelessWidget {
                     'Pesanan',
                     style: GoogleFonts.nunitoSans(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
                     ),
                   ),
@@ -276,17 +286,6 @@ class ProfilePage extends StatelessWidget {
                         context,
                         MaterialPageRoute(builder: (context) => const OrderHistoryPage()),
                       );
-                    },
-                  ),
-                  const Divider(height: 24),
-                  _buildMenuItem(
-                    icon: FeatherIcons.clock,
-                    title: 'Pesanan Pending',
-                    subtitle: 'Pesanan yang belum selesai',
-                    badge: '2',
-                    badgeColor: const Color(0xFFFF6B35),
-                    onTap: () {
-                      HapticFeedback.lightImpact();
                     },
                   ),
                 ],
@@ -304,8 +303,8 @@ class ProfilePage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.onSurface.withOpacity(0.05),
-                    blurRadius: 10,
+                    color: AppColors.primaryGreen.withOpacity(0.08),
+                    blurRadius: 12,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -317,7 +316,7 @@ class ProfilePage extends StatelessWidget {
                     'Akun',
                     style: GoogleFonts.nunitoSans(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
                     ),
                   ),
@@ -332,15 +331,6 @@ class ProfilePage extends StatelessWidget {
                         context,
                         MaterialPageRoute(builder: (context) => const AddressListPage()),
                       );
-                    },
-                  ),
-                  const Divider(height: 24),
-                  _buildMenuItem(
-                    icon: FeatherIcons.creditCard,
-                    title: 'Metode Pembayaran',
-                    subtitle: 'Kartu kredit, e-wallet, dll',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
                     },
                   ),
                 ],
@@ -358,8 +348,8 @@ class ProfilePage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.onSurface.withOpacity(0.05),
-                    blurRadius: 10,
+                    color: AppColors.primaryGreen.withOpacity(0.08),
+                    blurRadius: 12,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -371,7 +361,7 @@ class ProfilePage extends StatelessWidget {
                     'Bantuan',
                     style: GoogleFonts.nunitoSans(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
                     ),
                   ),
@@ -394,56 +384,6 @@ class ProfilePage extends StatelessWidget {
                       HapticFeedback.lightImpact();
                     },
                   ),
-                  const Divider(height: 24),
-                  // Member Benefits
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          FeatherIcons.gift,
-                          color: AppColors.primaryGreen,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Member Premium Benefits',
-                                style: GoogleFonts.nunitoSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primaryGreen,
-                                ),
-                              ),
-                              Text(
-                                'Gratis ongkir & diskon eksklusif',
-                                style: GoogleFonts.nunitoSans(
-                                  fontSize: 12,
-                                  color: AppColors.primaryGreen,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          'Aktif',
-                          style: GoogleFonts.nunitoSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primaryGreen,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -452,7 +392,26 @@ class ProfilePage extends StatelessWidget {
           ],
         ),
       ),
+      // Show bottom nav when ProfilePage is used outside MainNavigator
+      bottomNavigationBar: _shouldShowBottomNav(context)
+          ? CustomBottomNavBar(
+              currentIndex: 4,
+              onTap: (index) {
+                if (index == 0) {
+                  Navigator.pushReplacementNamed(context, '/home');
+                }
+                HapticFeedback.lightImpact();
+              },
+            )
+          : null,
     );
+  }
+
+  bool _shouldShowBottomNav(BuildContext context) {
+    // If this page is the root inside MainNavigator, no back button and no extra bottom nav is needed.
+    final route = ModalRoute.of(context);
+    // If it's a full screen modal pushed over MainNavigator, show bottom nav
+    return route?.canPop == true; 
   }
 
   Widget _buildStatCard(String value, String label, IconData icon, Color color) {
@@ -492,70 +451,80 @@ class ProfilePage extends StatelessWidget {
   Widget _buildMenuItem({
     required IconData icon,
     required String title,
-    required String subtitle,
+    String? subtitle,
     String? badge,
     Color? badgeColor,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.primaryGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: AppColors.primaryGreen, size: 16),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.nunitoSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onSurface,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: AppColors.primaryGreen, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.nunitoSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.nunitoSans(
+                          fontSize: 12,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (badge != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: badgeColor ?? AppColors.error,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    badge,
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.nunitoSans(
-                    fontSize: 12,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
+                const SizedBox(width: 8),
               ],
-            ),
-          ),
-          if (badge != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: badgeColor ?? AppColors.error,
-                borderRadius: BorderRadius.circular(8),
+              const Icon(
+                FeatherIcons.chevronRight,
+                color: AppColors.onSurfaceVariant,
+                size: 18,
               ),
-              child: Text(
-                badge,
-                style: GoogleFonts.nunitoSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Icon(
-            FeatherIcons.chevronRight,
-            color: AppColors.onSurfaceVariant,
-            size: 16,
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

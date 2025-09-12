@@ -5,7 +5,7 @@
 @section('content')
     <div class="mb-6">
         <div class="flex justify-between items-center">
-            <h1 class="text-3xl font-bold text-gray-900">Edit Order #{{ $order->order_number }}</h1>
+            <h1 class="text-3xl font-bold text-gray-900">Edit Order #{{ $order->invoice_no ?? $order->external_id ?? $order->id }}</h1>
             <div class="space-x-2">
                 <a href="{{ route('admin.orders.show', $order) }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                     View Order
@@ -24,8 +24,8 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Order Number</label>
-                    <p class="text-sm text-gray-900 bg-gray-50 p-2 rounded">{{ $order->order_number }}</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Invoice No</label>
+                    <p class="text-sm text-gray-900 bg-gray-50 p-2 rounded">{{ $order->invoice_no ?? $order->external_id ?? $order->id }}</p>
                 </div>
 
                 <div>

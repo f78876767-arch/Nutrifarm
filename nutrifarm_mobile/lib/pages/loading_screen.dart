@@ -8,57 +8,75 @@ class LoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // App logo placeholder
-            Container(
-              width: 120,
-              height: 120,
+      body: Stack(
+        children: [
+          // Full-screen gradient background
+          Positioned.fill(
+            child: Container(
               decoration: BoxDecoration(
-                color: AppColors.primaryGreen,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.eco,
-                size: 60,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Nutrifarm',
-              style: GoogleFonts.nunitoSans(
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primaryGreen,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: const [
+                    AppColors.primaryGreen,
+                    AppColors.darkGreen,
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Natural & Organic Products',
-              style: GoogleFonts.nunitoSans(
-                fontSize: 16,
-                color: AppColors.onSurfaceVariant,
+          ),
+
+          // Foreground content
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Spacer(),
+                  Text(
+                    'Nutrifarm',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Natural & Organic Products',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const Spacer(),
+                  const SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.6,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Memuat aplikasi…',
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 13,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
               ),
             ),
-            const SizedBox(height: 48),
-            CircularProgressIndicator(
-              color: AppColors.primaryGreen,
-              strokeWidth: 3,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Loading products...',
-              style: GoogleFonts.nunitoSans(
-                fontSize: 14,
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

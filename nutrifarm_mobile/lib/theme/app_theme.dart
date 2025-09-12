@@ -7,12 +7,12 @@ class AppColors {
   static const Color lightGreen = Color(0xFF69F0AE);
   static const Color accentGreen = Color(0xFF4CAF50);
   
-  // Modern neutral colors
+  // Modern neutral colors (light)
   static const Color background = Color(0xFFF8F9FA);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceVariant = Color(0xFFF1F3F4);
   
-  // Text colors
+  // Text colors (light)
   static const Color onPrimary = Color(0xFFFFFFFF);
   static const Color onSurface = Color(0xFF1C1B1F);
   static const Color onSurfaceVariant = Color(0xFF49454F);
@@ -198,6 +198,79 @@ class AppTheme {
           borderRadius: BorderRadius.circular(20),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+    );
+  }
+
+  static ThemeData get darkTheme {
+    const backgroundDark = Color(0xFF0E0E10);
+    const surfaceDark = Color(0xFF16161A);
+    const surfaceVariantDark = Color(0xFF1F1F24);
+    const onSurfaceDark = Color(0xFFE6E6E6);
+    const onSurfaceVariantDark = Color(0xFFB3B3B3);
+
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: AppColors.primaryGreen,
+      brightness: Brightness.dark,
+      primary: AppColors.accentGreen,
+      onPrimary: Colors.white,
+      secondary: AppColors.accentGreen,
+      background: backgroundDark,
+      surface: surfaceDark,
+      error: AppColors.error,
+    ).copyWith(
+      onSurface: onSurfaceDark,
+      onSurfaceVariant: onSurfaceVariantDark,
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      fontFamily: AppTextStyles.fontFamily,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: backgroundDark,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: surfaceDark,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        iconTheme: IconThemeData(color: Colors.white),
+        titleTextStyle: TextStyle(
+          fontFamily: AppTextStyles.fontFamily,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: surfaceDark,
+        elevation: 0,
+        shadowColor: Colors.black.withOpacity(0.3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.04)),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: surfaceVariantDark,
+        selectedColor: AppColors.accentGreen,
+        labelStyle: const TextStyle(
+          fontFamily: AppTextStyles.fontFamily,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: onSurfaceDark,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: onSurfaceDark),
+        bodyMedium: TextStyle(color: onSurfaceDark),
+        titleLarge: TextStyle(color: onSurfaceDark),
+        titleMedium: TextStyle(color: onSurfaceDark),
       ),
     );
   }

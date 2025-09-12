@@ -238,7 +238,7 @@ class ProfilePage extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Menu Items Section (like cart items section)
+            // Menu Items Section (orders)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(16),
@@ -275,17 +275,6 @@ class ProfilePage extends StatelessWidget {
                         context,
                         MaterialPageRoute(builder: (context) => const OrderHistoryPage()),
                       );
-                    },
-                  ),
-                  const Divider(height: 24),
-                  _buildMenuItem(
-                    icon: FeatherIcons.clock,
-                    title: 'Pesanan Pending',
-                    subtitle: 'Pesanan yang belum selesai',
-                    badge: '2',
-                    badgeColor: const Color(0xFFFF6B35),
-                    onTap: () {
-                      HapticFeedback.lightImpact();
                     },
                   ),
                 ],
@@ -329,22 +318,13 @@ class ProfilePage extends StatelessWidget {
                       HapticFeedback.lightImpact();
                     },
                   ),
-                  const Divider(height: 24),
-                  _buildMenuItem(
-                    icon: FeatherIcons.creditCard,
-                    title: 'Metode Pembayaran',
-                    subtitle: 'Kartu kredit, e-wallet, dll',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                    },
-                  ),
                 ],
               ),
             ),
 
             const SizedBox(height: 16),
 
-            // Help Section (like order summary section)
+            // Help Section
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(16),
@@ -388,56 +368,6 @@ class ProfilePage extends StatelessWidget {
                     onTap: () {
                       HapticFeedback.lightImpact();
                     },
-                  ),
-                  const Divider(height: 24),
-                  // Member Benefits
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          FeatherIcons.gift,
-                          color: AppColors.primaryGreen,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Member Premium Benefits',
-                                style: GoogleFonts.nunitoSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primaryGreen,
-                                ),
-                              ),
-                              Text(
-                                'Gratis ongkir & diskon eksklusif',
-                                style: GoogleFonts.nunitoSans(
-                                  fontSize: 12,
-                                  color: AppColors.primaryGreen,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          'Aktif',
-                          style: GoogleFonts.nunitoSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primaryGreen,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -487,7 +417,7 @@ class ProfilePage extends StatelessWidget {
   Widget _buildMenuItem({
     required IconData icon,
     required String title,
-    required String subtitle,
+    String? subtitle,
     String? badge,
     Color? badgeColor,
     required VoidCallback onTap,
@@ -517,13 +447,16 @@ class ProfilePage extends StatelessWidget {
                     color: AppColors.onSurface,
                   ),
                 ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.nunitoSans(
-                    fontSize: 12,
-                    color: AppColors.onSurfaceVariant,
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -545,7 +478,7 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
-          Icon(
+          const Icon(
             FeatherIcons.chevronRight,
             color: AppColors.onSurfaceVariant,
             size: 16,
