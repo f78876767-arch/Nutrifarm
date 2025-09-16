@@ -46,13 +46,14 @@ Route::prefix('shipping/rajaongkir')->group(function () {
 
 // J&T Shipping endpoints
 Route::prefix('shipping/jnt')->group(function () {
-    // Public (optional): tariff inquiry and tracking
+    // Public: tariff inquiry and tracking
     Route::post('/tariff', [JntController::class, 'tariff']);
     Route::post('/track', [JntController::class, 'track']);
+    Route::post('/track', [JntController::class, 'track']);
+    Route::post('/order/create', [JntController::class, 'createOrder']);
 
-    // Authenticated: create/cancel shipment orders
+    // Authenticated: cancel shipment orders
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/order/create', [JntController::class, 'createOrder']);
         Route::post('/order/cancel', [JntController::class, 'cancelOrder']);
     });
 });

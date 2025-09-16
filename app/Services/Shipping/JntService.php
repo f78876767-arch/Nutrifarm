@@ -13,6 +13,9 @@ class JntService
     protected array $paths;
     protected string $signKey;
     protected string $customerName;
+    protected string $orderBaseUrl;
+    protected string $orderKey;
+    protected string $orderApiKey;
 
     public function __construct()
     {
@@ -21,8 +24,13 @@ class JntService
         $this->username = (string) ($cfg['username'] ?? '');
         $this->password = (string) ($cfg['password'] ?? '');
         $this->paths = $cfg['paths'] ?? [];
-    $this->signKey = (string) (env('JNT_SIGN_KEY', $cfg['sign_key'] ?? ''));
-    $this->customerName = (string) (env('JNT_CUSTOMER_NAME', $cfg['customer_name'] ?? ($this->username ?? '')));
+        $this->signKey = (string) (env('JNT_SIGN_KEY', $cfg['sign_key'] ?? ''));
+        $this->customerName = (string) (env('JNT_CUSTOMER_NAME', $cfg['customer_name'] ?? ($this->username ?? '')));
+        
+        // Order API specific configuration
+        $this->orderBaseUrl = rtrim((string) ($cfg['order_base_url'] ?? $this->baseUrl), '/');
+        $this->orderKey = (string) ($cfg['order_key'] ?? '');
+        $this->orderApiKey = (string) ($cfg['order_api_key'] ?? '');
     }
 
     protected function authHeader(): array
@@ -37,16 +45,157 @@ class JntService
         return $this->baseUrl . $path;
     }
 
-    public function createOrder(array $payload)
+    protected function orderEndpoint(string $key): string
     {
-        $url = $this->endpoint('create_order');
-        $res = Http::withHeaders($this->authHeader())
-            ->asJson()
-            ->post($url, $payload);
-        if (!$res->successful()) {
-            Log::warning('jnt.create_order_failed', ['status' => $res->status(), 'body' => $res->body()]);
+        $path = $this->paths[$key] ?? '';
+        return $this->orderBaseUrl . $path;
+    }
+
+    public function createOrder(array $orderData)
+    {
+        try {
+            // Build order data according to J&T API specification
+            $orderDate = now()->setTimezone('Asia/Jakarta')->format('Y-m-d H:i:s');
+            $pickupStart = now()->setTimezone('Asia/Jakarta')->format('Y-m-d 08:00:00');
+            $pickupEnd = now()->setTimezone('Asia/Jakarta')->format('Y-m-d 18:00:00');
+            
+            // Extract first item for required fields
+            $firstItem = $orderData['goods'][0] ?? [];
+            $totalWeight = collect($orderData['goods'])->sum('weight');
+            $totalQty = collect($orderData['goods'])->sum('qty');
+            $totalValue = collect($orderData['goods'])->sum('value');
+            
+            $data = [
+                'username' => $this->username,
+                'api_key' => $this->orderApiKey,
+                'orderid' => $orderData['order_no'],
+                'shipper_name' => $orderData['shipper']['name'],
+                'shipper_contact' => $orderData['shipper']['name'], // Same as shipper_name
+                'shipper_phone' => $orderData['shipper']['phone'],
+                'shipper_addr' => $orderData['shipper']['address'],
+                'origin_code' => $orderData['shipper']['area'], // Should be 3-letter code like JKT
+                'receiver_name' => $orderData['receiver']['name'],
+                'receiver_phone' => $orderData['receiver']['phone'],
+                'receiver_addr' => $orderData['receiver']['address'],
+                'receiver_zip' => $orderData['receiver']['postcode'],
+                'destination_code' => $orderData['receiver']['area'], // Should be 3-letter code
+                'receiver_area' => $orderData['receiver']['area'] . '001', // Add district code
+                'qty' => $totalQty,
+                'weight' => $totalWeight,
+                'goodsdesc' => $firstItem['name'] ?? 'General goods',
+                'servicetype' => $orderData['service_type'] === 'EZ' ? 1 : 6, // 1=Pickup, 6=Drop off
+                'insurance' => $orderData['insurance'] ?? 0,
+                'orderdate' => $orderDate,
+                'item_name' => $firstItem['name'] ?? 'General Item',
+                'cod' => $orderData['cod'] ?? 0,
+                'sendstarttime' => $pickupStart,
+                'sendendtime' => $pickupEnd,
+                'expresstype' => '1', // 1 = EZ (Regular)
+                'goodsvalue' => $totalValue,
+            ];
+
+            // Create the data_param as required by J&T API
+            $dataParam = json_encode(['detail' => [$data]]);
+            
+            // Generate signature: base64(md5(data_param + key))
+            $signature = base64_encode(md5($dataParam . $this->orderKey));
+            
+            $payload = [
+                'data_param' => $dataParam,
+                'data_sign' => $signature
+            ];
+
+            Log::info('JNT Order Debug', [
+                'data' => $data,
+                'data_param' => $dataParam,
+                'order_key' => $this->orderKey,
+                'signature' => $signature,
+                'url' => $this->orderBaseUrl . '/jts-idn-ecommerce-api/api/order/create'
+            ]);
+
+            $response = Http::withOptions(['verify' => false])
+                ->timeout(30)
+                ->asForm() // Use form data instead of JSON
+                ->post($this->orderBaseUrl . '/jts-idn-ecommerce-api/api/order/create', $payload);
+
+            Log::info('JNT Order Response', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'headers' => $response->headers()
+            ]);
+
+            if (!$response->successful()) {
+                return [
+                    'is_success' => 'false',
+                    'message' => 'HTTP ' . $response->status(),
+                    'content' => null,
+                ];
+            }
+
+            $data = $response->json();
+            return $data ?? ['is_success' => 'false', 'message' => 'Invalid response'];
+
+        } catch (\Exception $e) {
+            Log::error('JNT Order Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'is_success' => 'false',
+                'message' => $e->getMessage(),
+                'content' => null
+            ];
         }
-        return $res->json();
+    }
+
+    public function trackShipment(string $awb)
+    {
+        $endpoint = 'https://demo-general.inuat-jntexpress.id/jandt_track/track/trackAction!tracking.action';
+        $username = 'NUTRIFARMOFFICIAL';
+        $password = 'jhLHXag1M7kF';
+        $body = json_encode([
+            'awb' => $awb,
+            'eccompanyid' => $username
+        ]);
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withBasicAuth($username, $password)
+                ->withOptions(['verify' => false]) // Disable SSL verification for demo
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])
+                ->send('POST', $endpoint, [
+                    'body' => $body
+                ]);
+
+            \Log::info('JNT Track Response', [
+                'awb' => $awb,
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'headers' => $response->headers(),
+            ]);
+
+            if (!$response->successful()) {
+                return [
+                    'error_id' => (string) $response->status(),
+                    'error_message' => 'HTTP ' . $response->status(),
+                ];
+            }
+
+            return $response->json();
+        } catch (\Exception $e) {
+            \Log::error('JNT Track Error', [
+                'awb' => $awb,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return [
+                'error_id' => '500',
+                'error_message' => $e->getMessage(),
+            ];
+        }
     }
 
     public function cancelOrder(array $payload)
@@ -179,8 +328,8 @@ class JntService
             'Accept' => 'application/json, text/plain, */*',
             'Content-Type' => 'application/x-www-form-urlencoded',
         ];
-    // Do not attach Basic Auth for tariff: docs show Authentication Not Required
-    $http = Http::asForm()->withHeaders($headers);
+        // Do not attach Basic Auth for tariff: docs show Authentication Not Required
+        $http = Http::asForm()->withHeaders($headers);
 
         // Allow disabling SSL verification for sandbox/dev endpoints with self-signed chains
         $verify = config('services.jnt.verify_ssl', true);

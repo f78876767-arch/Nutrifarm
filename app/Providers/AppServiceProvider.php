@@ -11,7 +11,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Services\Shipping\JntService::class, function ($app) {
+            return new \App\Services\Shipping\JntService();
+        });
     }
 
     /**
