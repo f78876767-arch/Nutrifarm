@@ -71,6 +71,7 @@ Route::middleware(['web','auth.basic','admin'])->prefix('simple-admin')->name('a
     Route::post('inventory/products/{product}/adjust', [InventoryController::class, 'adjustStock'])->name('inventory.adjust');
     Route::post('inventory/bulk-update', [InventoryController::class, 'bulkUpdate'])->name('inventory.bulk-update');
     Route::get('inventory/export', [InventoryController::class, 'export'])->name('inventory.export');
+    Route::get('inventory/export-reports', [InventoryController::class, 'exportReportSheets'])->name('inventory.export-reports');
 
     // Product Variants
     // Route::resource('variants', VariantController::class);
@@ -126,6 +127,10 @@ Route::middleware(['web','auth.basic','admin'])->prefix('simple-admin')->name('a
     Route::post('reviews/{review}/approve', [ReviewController::class, 'approve'])->name('reviews.approve');
     Route::post('reviews/{review}/reject', [ReviewController::class, 'reject'])->name('reviews.reject');
     Route::post('reviews/{review}/respond', [ReviewController::class, 'respond'])->name('reviews.respond');
+
+    // Banner Management
+    Route::resource('banners', App\Http\Controllers\Admin\BannerController::class);
+    Route::patch('banners/{banner}/toggle-status', [App\Http\Controllers\Admin\BannerController::class, 'toggleStatus'])->name('banners.toggle-status');
 });
 
 // Debug route to test if Laravel is working

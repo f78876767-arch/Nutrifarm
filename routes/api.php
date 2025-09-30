@@ -217,6 +217,8 @@ Route::post('/login', function (Request $request) {
 // Public products
 Route::apiResource('products', ProductController::class)->only(['index', 'show']);
 Route::get('products-segmented', [ProductController::class, 'segmented']);
+Route::get('products-featured', [ProductController::class, 'featured']);
+Route::get('products-popular', [ProductController::class, 'popular']);
 
 // Promotion endpoints (public)
 Route::get('/promotions/discounts', [PromotionController::class, 'getActiveDiscounts']);
@@ -230,4 +232,14 @@ Route::post('/auth/reset-password', [ForgotPasswordController::class, 'reset'])-
 
 // Public product reviews
 Route::get('/products/{productId}/reviews', [ReviewController::class, 'productReviews']);
+
+// Banner routes
+Route::get('/banners', [App\Http\Controllers\Api\BannerController::class, 'index']);
+
+// Admin banner routes (dengan middleware auth jika diperlukan)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/banners', [App\Http\Controllers\Api\BannerController::class, 'store']);
+    Route::put('/banners/{banner}', [App\Http\Controllers\Api\BannerController::class, 'update']);
+    Route::delete('/banners/{banner}', [App\Http\Controllers\Api\BannerController::class, 'destroy']);
+});
 

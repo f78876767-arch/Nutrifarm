@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\Request;
 
@@ -11,37 +12,10 @@ class ProductController extends Controller
     public function index()
     {
         $products = Product::with(['categories', 'variants'])->get();
-        return $products->map(function ($p) {
-            $primaryVariant = $p->primaryVariant();
-            return [
-                'id' => $p->id,
-                'name' => $p->name,
-                'description' => $p->description,
-                'price' => $primaryVariant ? (float)$primaryVariant->base_price : 0,
-                'effective_price' => (float)$p->effective_price,
-                'discount_amount' => $p->is_discount_active ? ($primaryVariant ? (float)$primaryVariant->discount_amount : null) : null,
-                'is_discount_active' => (bool)$p->is_discount_active,
-                'image_url' => $p->image_url,
-                'stock_quantity' => $primaryVariant ? (int)$primaryVariant->stock_quantity : 0,
-                'categories' => $p->categories->pluck('name'),
-                'variants' => $p->variants->map(function($v) {
-                    return [
-                        'id' => $v->id,
-                        'name' => $v->name,
-                        'value' => $v->value,
-                        'unit' => $v->unit,
-                        'sku' => $v->sku,
-                        'base_price' => (float)$v->base_price,
-                        'effective_price' => (float)$v->effective_price,
-                        'discount_amount' => $v->isDiscountActive() ? (float)$v->discount_amount : null,
-                        'is_discount_active' => $v->isDiscountActive(),
-                        'stock_quantity' => (int)$v->stock_quantity,
-                        'weight' => $v->weight,
-                        'is_active' => (bool)$v->is_active,
-                    ];
-                }),
-            ];
-        });
+        return response()->json([
+            'success' => true,
+            'data' => ProductResource::collection($products)
+        ]);
     }
 
     public function segmented()
@@ -60,6 +34,8 @@ class ProductController extends Controller
                 'discount_amount' => $p->is_discount_active ? ($primaryVariant ? (float)$primaryVariant->discount_amount : null) : null,
                 'is_discount_active' => (bool)$p->is_discount_active,
                 'image_url' => $p->image_url,
+                'total_sales' => (int)$p->total_sales,      // 🔥 ADD THIS
+                'sales_count' => (int)$p->total_sales,      // 🔥 ADD THIS (alias)
                 'variants' => $p->variants->map(function($v) {
                     return [
                         'id' => $v->id,
@@ -194,5 +170,38 @@ class ProductController extends Controller
         $product = Product::findOrFail($id);
         $product->delete();
         return response()->json(null, 204);
+    }
+
+    /**
+     * Get featured products
+     */
+    public function featured()
+    {
+        $products = Product::with(['categories', 'variants'])
+            ->where('is_active', true)
+            ->where('is_featured', true)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => ProductResource::collection($products)
+        ]);
+    }
+
+    /**
+     * Get popular products (sorted by sales count)
+     */
+    public function popular()
+    {
+        $products = Product::with(['categories', 'variants'])
+            ->where('is_active', true)
+            ->orderBy('total_sales', 'desc')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => ProductResource::collection($products)
+        ]);
     }
 }

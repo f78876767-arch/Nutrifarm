@@ -11,6 +11,7 @@ class Product extends Model
 
     protected $fillable = [
         'name', 'description', 'image_path', 'is_active', 'is_featured', 'category_id',
+        'total_sales', 'sales_count',
         // Legacy fields for backward compatibility (will be deprecated)
         'sku', 'price', 'stock_quantity', 'discount_price', 'discount_amount'
     ];
@@ -210,5 +211,54 @@ class Product extends Model
     public function getRatingCountAttribute(): int
     {
         return (int) $this->reviews()->count();
+    }
+
+    /**
+     * Relationship with order items
+     */
+    public function orderItems()
+    {
+        return $this->hasMany(\App\Models\OrderItem::class);
+    }
+
+    /**
+     * Get total sales from completed orders
+     */
+    public function getTotalSalesAttribute()
+    {
+        if (isset($this->attributes['total_sales'])) {
+            return $this->attributes['total_sales'];
+        }
+        
+        return $this->calculateTotalSales();
+    }
+
+    /**
+     * Calculate total sales from order items
+     */
+    public function calculateTotalSales()
+    {
+        if (class_exists('\App\Models\OrderItem')) {
+            $totalSales = $this->orderItems()
+                ->whereHas('order', function($query) {
+                    $query->where('status', 'completed');
+                })
+                ->sum('quantity');
+            
+            // Update the cached value
+            $this->update(['total_sales' => $totalSales]);
+            return $totalSales;
+        }
+        
+        return $this->attributes['total_sales'] ?? 0;
+    }
+
+    /**
+     * Increment sales count when order is completed
+     */
+    public function incrementSales(int $quantity = 1)
+    {
+        $this->increment('total_sales', $quantity);
+        $this->increment('sales_count', $quantity);
     }
 }

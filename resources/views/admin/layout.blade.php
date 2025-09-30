@@ -86,6 +86,10 @@
                         <i class="fas fa-shopping-cart w-5"></i>
                         <span class="ml-3">Orders</span>
                     </a>
+                    <a href="{{ route('admin.banners.index') }}" class="flex items-center px-4 py-3 text-white rounded-lg hover:bg-primary-700 transition-colors {{ request()->routeIs('admin.banners.*') ? 'bg-primary-700 shadow-md' : '' }}">
+                        <i class="fas fa-image w-5"></i>
+                        <span class="ml-3">Banners</span>
+                    </a>
                     
                     <!-- Inventory Management Section -->
                     <div class="pt-4 pb-2">

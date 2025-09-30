@@ -21,6 +21,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register Order Observer if Order model exists
+        if (class_exists(\App\Models\Order::class)) {
+            \App\Models\Order::observe(\App\Observers\OrderObserver::class);
+        }
     }
 }

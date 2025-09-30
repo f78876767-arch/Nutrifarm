@@ -3,8 +3,72 @@
 @section('title', 'Inventory Reports')
 
 @section('content')
+<!-- Include required assets -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+<style>
+    .export-dropdown {
+        min-width: 280px;
+    }
+    .export-item:hover {
+        background-color: #f9fafb;
+        transform: translateX(2px);
+        transition: all 0.2s ease;
+    }
+    .export-category {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 600;
+    }
+</style>
+
 <div class="min-h-screen bg-gray-50 py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Export Info Banner -->
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold mb-2">📊 Inventory Reports & Export</h1>
+                    <p class="text-indigo-100">Generate comprehensive inventory reports with professional Excel formatting</p>
+                </div>
+                <div class="hidden md:block">
+                    <div class="bg-white bg-opacity-20 rounded-lg p-4">
+                        <div class="text-center">
+                            <i class="fas fa-file-excel text-3xl mb-2"></i>
+                            <div class="text-sm font-medium">Multi-Sheet<br>Excel Report</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Export Preview -->
+            <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div class="bg-white bg-opacity-15 rounded-lg p-3 text-center border border-white border-opacity-20">
+                    <i class="fas fa-chart-pie text-lg mb-2"></i>
+                    <div class="font-medium">Summary Sheet</div>
+                    <div class="text-xs text-indigo-200 mt-1">Overview & stats</div>
+                </div>
+                <div class="bg-white bg-opacity-15 rounded-lg p-3 text-center border border-white border-opacity-20">
+                    <i class="fas fa-boxes text-lg mb-2"></i>
+                    <div class="font-medium">Products Sheet</div>
+                    <div class="text-xs text-indigo-200 mt-1">Detailed product list</div>
+                </div>
+                <div class="bg-white bg-opacity-15 rounded-lg p-3 text-center border border-white border-opacity-20">
+                    <i class="fas fa-tags text-lg mb-2"></i>
+                    <div class="font-medium">Categories Sheet</div>
+                    <div class="text-xs text-indigo-200 mt-1">Category breakdown</div>
+                </div>
+                <div class="bg-white bg-opacity-15 rounded-lg p-3 text-center border border-white border-opacity-20">
+                    <i class="fas fa-exclamation-triangle text-lg mb-2"></i>
+                    <div class="font-medium">Low Stock Sheet</div>
+                    <div class="text-xs text-indigo-200 mt-1">Items need restock</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
             <div class="bg-white overflow-hidden shadow rounded-lg">
@@ -114,10 +178,81 @@
             <div class="px-4 py-5 sm:p-6">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-lg font-medium text-gray-900">Stock by Category</h2>
-                    <a href="{{ route('admin.inventory.export') }}" 
-                       class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                        Export Report
-                    </a>
+                    <div class="flex space-x-3">
+                        <!-- Dropdown Export Button -->
+                        <div class="relative inline-block text-left" x-data="{ open: false }">
+                            <div>
+                                <button type="button" @click="open = !open" 
+                                        class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors duration-200">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Export Options
+                                    <i class="fas fa-chevron-down ml-2 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                                </button>
+                            </div>
+
+                            <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" 
+                                 class="export-dropdown origin-top-right absolute right-0 mt-2 rounded-lg shadow-xl bg-white ring-1 ring-gray-200 focus:outline-none z-20 border">
+                                <div class="py-2">
+                                    <!-- Header -->
+                                    <div class="px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-t-lg border-b">
+                                        <h3 class="export-category text-sm font-semibold">📊 Professional Reports</h3>
+                                        <p class="text-xs text-gray-600 mt-1">Comprehensive multi-sheet Excel reports</p>
+                                    </div>
+                                    
+                                    <!-- Excel Detailed Report -->
+                                    <a href="{{ route('admin.inventory.export-reports', ['mode' => 'full']) }}" 
+                                       class="export-item group flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all duration-200">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-file-excel text-green-500 text-lg mr-3"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="font-medium text-gray-900">Complete Excel Report</div>
+                                            <div class="text-xs text-gray-500 mt-1">4 sheets: Summary, Products, Categories, Low Stock</div>
+                                            <div class="text-xs text-green-600 font-medium mt-1">✨ Recommended</div>
+                                        </div>
+                                    </a>
+                                    
+                                    <!-- Divider -->
+                                    <div class="my-2 border-t border-gray-100"></div>
+                                    <div class="px-4 py-2 bg-gray-50">
+                                        <h4 class="text-xs font-semibold text-gray-700">📄 Basic Exports</h4>
+                                        <p class="text-xs text-gray-500">Simple data formats</p>
+                                    </div>
+                                    
+                                    <!-- CSV Export -->
+                                    <a href="{{ route('admin.inventory.export', ['format' => 'csv']) }}" 
+                                       class="export-item group flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 transition-all duration-200">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-file-csv text-blue-500 text-lg mr-3"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="font-medium text-gray-900">CSV Export</div>
+                                            <div class="text-xs text-gray-500 mt-1">Basic product data for spreadsheets</div>
+                                        </div>
+                                    </a>
+                                    
+                                    <!-- Simple Excel -->
+                                    <a href="{{ route('admin.inventory.export', ['format' => 'excel']) }}" 
+                                       class="export-item group flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-emerald-50 transition-all duration-200 rounded-b-lg">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-table text-emerald-600 text-lg mr-3"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="font-medium text-gray-900">Simple Excel</div>
+                                            <div class="text-xs text-gray-500 mt-1">Single sheet product list</div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Excel Export Button -->
+                        <a href="{{ route('admin.inventory.export-reports') }}" 
+                           class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm">
+                            <i class="fas fa-file-excel mr-2"></i>
+                            Quick Excel Export
+                        </a>
+                    </div>
                 </div>
 
                 <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
