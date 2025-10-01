@@ -40,21 +40,12 @@
                 <div class="flex items-center justify-center h-16 px-4 bg-primary-900 border-b border-primary-700">
                     <div class="flex items-center space-x-2">
                         @php
-                            $brandLogo = config('app.brand_logo') ?: env('APP_BRAND_LOGO');
-                            $candidates = array_filter([
-                                $brandLogo, // allow override via config/app.php or .env
-                                'images/nutrifarm-logo.png',
-                                'image/nutrifarm-logo.png', // handle singular folder too
-                                'images/logo.png',
-                                'image/logo.png',
-                            ]);
-                            $logoPath = null;
-                            foreach ($candidates as $candidate) {
-                                if ($candidate && file_exists(public_path($candidate))) { $logoPath = $candidate; break; }
-                            }
+                            $whiteLogo = 'images/nutrifarm_logo_putih.png';
+                            $fallbackLogo = 'images/nutrifarm_logo_1.png';
+                            $chosenLogo = file_exists(public_path($whiteLogo)) ? $whiteLogo : (file_exists(public_path($fallbackLogo)) ? $fallbackLogo : null);
                         @endphp
-                        @if($logoPath)
-                            <img src="{{ asset($logoPath) }}?v={{ @filemtime(public_path($logoPath)) }}" alt="Nutrifarm" class="h-8 w-auto">
+                        @if($chosenLogo)
+                            <img src="{{ asset($chosenLogo) }}?v={{ @filemtime(public_path($chosenLogo)) }}" alt="Nutrifarm" class="h-9 w-auto drop-shadow-sm">
                         @else
                             <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                                 <i class="fas fa-leaf text-primary-600 text-lg"></i>

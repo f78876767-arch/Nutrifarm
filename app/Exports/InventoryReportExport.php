@@ -10,6 +10,8 @@ use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
@@ -17,6 +19,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class InventoryReportExport implements WithMultipleSheets
 {
@@ -31,7 +34,7 @@ class InventoryReportExport implements WithMultipleSheets
     }
 }
 
-class InventorySummarySheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths, WithTitle
+class InventorySummarySheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
     public function array(): array
     {
@@ -102,37 +105,47 @@ class InventorySummarySheet implements FromArray, WithHeadings, WithStyles, With
     {
         return 'Summary';
     }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function(AfterSheet $event){
+                $sheet = $event->sheet->getDelegate();
+                $sheet->getColumnDimension('A')->setWidth(28);
+                $sheet->getColumnDimension('B')->setWidth(28);
+                $sheet->freezePane('A2');
+                // No numeric formatting needed here beyond defaults
+            }
+        ];
+    }
 }
 
-class ProductsInventorySheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths, WithTitle
+class ProductsInventorySheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
     public function array(): array
     {
-        $products = Product::with(['category', 'variants'])->get();
-        
+        set_time_limit(300);
         $data = [];
-        foreach ($products as $product) {
-            $totalStock = (int) $product->total_stock;
-            $variantValue = $product->variants->sum(function ($variant) {
-                $price = $variant->base_price ?? 0;
-                $qty = $variant->stock_quantity ?? 0;
-                return $price * $qty;
-            });
-            
-            $status = $totalStock == 0 ? 'Out of Stock' : ($totalStock <= 10 ? 'Low Stock' : 'In Stock');
-
-            $data[] = [
-                $product->name,
-                $product->sku ?? 'N/A',
-                $product->category->name ?? 'Uncategorized',
-                $product->variants->count(),
-                number_format($totalStock),
-                'Rp ' . number_format($variantValue, 0, ',', '.'),
-                $status,
-                $product->updated_at->format('d/m/Y H:i'),
-            ];
-        }
-        
+        Product::with(['category','variants'])->chunk(400, function($chunk) use (&$data){
+            foreach ($chunk as $product) {
+                $totalStock = (int) $product->variants->sum('stock_quantity');
+                $variantValue = 0;
+                foreach ($product->variants as $variant) {
+                    $variantValue += ($variant->base_price ?? 0) * ($variant->stock_quantity ?? 0);
+                }
+                $status = $totalStock === 0 ? 'Out of Stock' : ($totalStock <= 10 ? 'Low Stock' : 'In Stock');
+                $data[] = [
+                    $product->name,
+                    $product->sku ?? 'N/A',
+                    $product->category->name ?? 'Uncategorized',
+                    $product->variants->count(),
+                    $totalStock, // raw number
+                    $variantValue, // raw number
+                    $status,
+                    $product->updated_at ? $product->updated_at->format('Y-m-d H:i') : null,
+                ];
+            }
+        });
         return $data;
     }
 
@@ -184,39 +197,69 @@ class ProductsInventorySheet implements FromArray, WithHeadings, WithStyles, Wit
     {
         return 'Products';
     }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function(AfterSheet $event){
+                $sheet = $event->sheet->getDelegate();
+                $highestRow = $sheet->getHighestRow();
+                $sheet->freezePane('A2');
+                $sheet->setAutoFilter('A1:H1');
+                // Column F (Stock Value) raw numeric -> format Rupiah
+                $sheet->getStyle("F2:F$highestRow")->getNumberFormat()->setFormatCode('"Rp"\ \#,#0');
+                // Conditional formatting for Total Stock (E column) <=10
+                $range = "E2:E$highestRow";
+                $conds = $sheet->getStyle($range)->getConditionalStyles();
+                $c = new \PhpOffice\PhpSpreadsheet\Style\Conditional();
+                $c->setConditionType(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_CELLIS)
+                  ->setOperatorType(\PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_LESSTHANOREQUAL)
+                  ->addCondition('10');
+                $c->getStyle()->getFont()->getColor()->setRGB('DC2626');
+                $c->getStyle()->getFont()->setBold(true);
+                $conds[] = $c; $sheet->getStyle($range)->setConditionalStyles($conds);
+                // Status color
+                for($r=2;$r<=$highestRow;$r++){
+                    $status=$sheet->getCell("G$r")->getValue();
+                    if($status==='Out of Stock'){ $sheet->getStyle("G$r")->getFont()->getColor()->setRGB('DC2626'); }
+                    elseif($status==='Low Stock'){ $sheet->getStyle("G$r")->getFont()->getColor()->setRGB('D97706'); }
+                    else { $sheet->getStyle("G$r")->getFont()->getColor()->setRGB('059669'); }
+                }
+            }
+        ];
+    }
 }
 
-class CategoriesInventorySheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths, WithTitle
+class CategoriesInventorySheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
     public function array(): array
     {
-        $categories = Category::with(['products.variants'])->get();
-        
+        set_time_limit(300);
         $data = [];
-        foreach ($categories as $category) {
-            $productsCount = $category->products->count();
-            $variantsCount = $category->products->sum(fn($product) => $product->variants->count());
-            $totalStock = $category->products->sum(function ($product) {
-                return $product->variants->sum('stock_quantity');
-            });
-            $stockValue = $category->products->sum(function ($product) {
-                return $product->variants->sum(function ($variant) {
-                    $price = $variant->base_price ?? 0;
-                    $qty = $variant->stock_quantity ?? 0;
-                    return $price * $qty;
-                });
-            });
-
-            $data[] = [
-                $category->name,
-                $productsCount,
-                $variantsCount,
-                number_format($totalStock),
-                'Rp ' . number_format($stockValue, 0, ',', '.'),
-                $productsCount > 0 ? number_format($totalStock / $productsCount, 1) : '0',
-            ];
-        }
-        
+        Category::with(['products.variants'])->chunk(200, function($chunk) use (&$data){
+            foreach($chunk as $category){
+                $productsCount = $category->products->count();
+                $variantsCount = 0; $totalStock=0; $stockValue=0;
+                foreach($category->products as $product){
+                    $variantsCount += $product->variants->count();
+                    foreach($product->variants as $variant){
+                        $qty = $variant->stock_quantity ?? 0;
+                        $price = $variant->base_price ?? 0;
+                        $totalStock += $qty;
+                        $stockValue += $price * $qty;
+                    }
+                }
+                $avg = $productsCount>0 ? round($totalStock / $productsCount,1) : 0;
+                $data[] = [
+                    $category->name,
+                    $productsCount,
+                    $variantsCount,
+                    $totalStock,
+                    $stockValue,
+                    $avg,
+                ];
+            }
+        });
         return $data;
     }
 
@@ -264,36 +307,49 @@ class CategoriesInventorySheet implements FromArray, WithHeadings, WithStyles, W
     {
         return 'Categories';
     }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function(AfterSheet $event){
+                $sheet=$event->sheet->getDelegate();
+                $sheet->freezePane('A2');
+                $sheet->setAutoFilter('A1:F1');
+                $highestRow = $sheet->getHighestRow();
+                // Stock Value column E
+                $sheet->getStyle("E2:E$highestRow")->getNumberFormat()->setFormatCode('"Rp"\ \#,#0');
+            }
+        ];
+    }
 }
 
-class LowStockSheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths, WithTitle
+class LowStockSheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
     public function array(): array
     {
-        $lowStockVariants = Variant::with(['product.category'])
+        set_time_limit(300);
+        $data = [];
+        Variant::with(['product.category'])
             ->where('stock_quantity', '<=', 10)
             ->orderBy('stock_quantity', 'asc')
-            ->get();
-        
-        $data = [];
-        foreach ($lowStockVariants as $variant) {
-            $status = $variant->stock_quantity == 0 ? 'OUT OF STOCK' : 'LOW STOCK';
-            $urgency = $variant->stock_quantity == 0 ? 'CRITICAL' : 
-                      ($variant->stock_quantity <= 5 ? 'HIGH' : 'MEDIUM');
-
-            $data[] = [
-                $variant->product->name ?? 'N/A',
-                $variant->product->sku ?? 'N/A',
-                $variant->product->category->name ?? 'Uncategorized',
-                $variant->size ?? 'Default',
-                $variant->color ?? 'Default',
-                $variant->stock_quantity,
-                'Rp ' . number_format($variant->base_price ?? 0, 0, ',', '.'),
-                $status,
-                $urgency,
-            ];
-        }
-        
+            ->chunk(500, function($chunk) use (&$data){
+                foreach ($chunk as $variant) {
+                    $qty = $variant->stock_quantity ?? 0;
+                    $status = $qty == 0 ? 'OUT OF STOCK' : 'LOW STOCK';
+                    $urgency = $qty == 0 ? 'CRITICAL' : ($qty <= 5 ? 'HIGH' : 'MEDIUM');
+                    $data[] = [
+                        $variant->product->name ?? 'N/A',
+                        $variant->product->sku ?? 'N/A',
+                        $variant->product->category->name ?? 'Uncategorized',
+                        $variant->size ?? 'Default',
+                        $variant->color ?? 'Default',
+                        $qty,
+                        ($variant->base_price ?? 0),
+                        $status,
+                        $urgency,
+                    ];
+                }
+            });
         return $data;
     }
 
@@ -346,5 +402,26 @@ class LowStockSheet implements FromArray, WithHeadings, WithStyles, WithColumnWi
     public function title(): string
     {
         return 'Low Stock';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function(AfterSheet $event){
+                $sheet=$event->sheet->getDelegate();
+                $highestRow = $sheet->getHighestRow();
+                $sheet->freezePane('A2');
+                $sheet->setAutoFilter('A1:I1');
+                // Unit Price column G -> Rupiah
+                $sheet->getStyle("G2:G$highestRow")->getNumberFormat()->setFormatCode('"Rp"\ \#,#0');
+                // Urgency coloring (I col)
+                for($r=2;$r<=$highestRow;$r++){
+                    $urg=$sheet->getCell("I$r")->getValue();
+                    if($urg==='CRITICAL'){ $sheet->getStyle("I$r")->getFont()->getColor()->setRGB('DC2626'); }
+                    elseif($urg==='HIGH'){ $sheet->getStyle("I$r")->getFont()->getColor()->setRGB('D97706'); }
+                    else { $sheet->getStyle("I$r")->getFont()->getColor()->setRGB('059669'); }
+                }
+            }
+        ];
     }
 }

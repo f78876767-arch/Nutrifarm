@@ -24,9 +24,20 @@ class CategoryController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|unique:categories',
             'description' => 'nullable|string|max:500',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:500',
+            'is_active' => 'nullable|boolean',
         ]);
 
-        Category::create($request->all());
+        $data = [
+            'name' => $request->input('name'),
+            'description' => $request->input('description'),
+            'meta_title' => $request->input('meta_title'),
+            'meta_description' => $request->input('meta_description'),
+            'is_active' => $request->boolean('is_active'),
+        ];
+
+        Category::create($data);
 
         return redirect()->route('admin.categories.index')->with('success', 'Category created successfully');
     }
@@ -47,9 +58,20 @@ class CategoryController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
             'description' => 'nullable|string|max:500',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:500',
+            'is_active' => 'nullable|boolean',
         ]);
 
-        $category->update($request->all());
+        $data = [
+            'name' => $request->input('name'),
+            'description' => $request->input('description'),
+            'meta_title' => $request->input('meta_title'),
+            'meta_description' => $request->input('meta_description'),
+            'is_active' => $request->boolean('is_active'),
+        ];
+
+        $category->update($data);
 
         return redirect()->route('admin.categories.index')->with('success', 'Category updated successfully');
     }

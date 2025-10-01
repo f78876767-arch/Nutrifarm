@@ -7,7 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class Category extends Model
 {
     use HasFactory;
-    protected $fillable = ['name', 'description'];
+    protected $fillable = [
+        'name',
+        'description',
+        'is_active',
+        'meta_title',
+        'meta_description',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 
     public function products()
     {
