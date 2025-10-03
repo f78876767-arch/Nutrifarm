@@ -115,7 +115,8 @@
 
                 <!-- Is Active -->
                 <div class="flex items-center">
-                    <input type="checkbox" name="is_active" id="is_active" 
+                    <input type="hidden" name="is_active" value="0">
+                    <input type="checkbox" name="is_active" id="is_active" value="1"
                            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                            {{ old('is_active', $banner->is_active) ? 'checked' : '' }}>
                     <label for="is_active" class="ml-2 block text-sm text-gray-900">

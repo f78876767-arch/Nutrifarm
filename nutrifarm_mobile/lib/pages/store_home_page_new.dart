@@ -7,6 +7,7 @@ import '../models/product.dart';
 import '../services/cart_service.dart';
 import '../services/favorites_service_api.dart';
 import '../services/search_service.dart';
+import '../services/api_service.dart';
 import '../pages/product_detail_page_new.dart';
 import '../pages/search_page.dart';
 import '../pages/categories_page.dart';
@@ -17,6 +18,7 @@ import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'dart:async';
 import 'dart:ui' show lerpDouble;
+import '../models/banner.dart';
 
 class StoreHomePageNew extends StatefulWidget {
   const StoreHomePageNew({super.key});
@@ -26,10 +28,12 @@ class StoreHomePageNew extends StatefulWidget {
 }
 
 class _StoreHomePageNewState extends State<StoreHomePageNew> with TickerProviderStateMixin {
-  final List<String> _bannerImages = [
-    'assets/images/banner-1.png',
-    'assets/images/banner-2.png',
-  ];
+  // final List<String> _bannerImages = [
+  //   'assets/images/banner-1.png',
+  //   'assets/images/banner-2.png',
+  // ];
+  List<BannerModel> _banners = [];
+  bool _loadingBanners = true;
 
   int _currentBanner = 0;
   final PageController _pageController = PageController();
@@ -41,14 +45,25 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> with TickerProvider
   @override
   void initState() {
     super.initState();
+    _fetchBanners();
     _bannerTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (!mounted) return;
-      int nextPage = (_currentBanner + 1) % _bannerImages.length;
+      if (_banners.isEmpty) return; // nothing to rotate
+      int nextPage = (_currentBanner + 1) % _banners.length;
       _pageController.animateToPage(
         nextPage,
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
       );
+    });
+  }
+
+  Future<void> _fetchBanners() async {
+    final list = await ApiService.getBanners();
+    if (!mounted) return;
+    setState(() {
+      _banners = list;
+      _loadingBanners = false;
     });
   }
 
@@ -235,6 +250,11 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> with TickerProvider
   }
 
   Widget _buildBannerSection() {
+    if (_loadingBanners) {
+      return const Padding(padding: EdgeInsets.all(20), child: BannerSkeleton());
+    }
+    final hasData = _banners.isNotEmpty;
+    final count = hasData ? _banners.length : 2; // fallback placeholder count
     return Container(
       height: 180,
       margin: const EdgeInsets.all(20),
@@ -243,105 +263,71 @@ class _StoreHomePageNewState extends State<StoreHomePageNew> with TickerProvider
           PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
-              setState(() {
-                _currentBanner = index;
-              });
+              setState(() { _currentBanner = index; });
             },
-            itemCount: _bannerImages.length,
+            itemCount: count,
             itemBuilder: (context, index) {
+              if (hasData) {
+                final b = _banners[index];
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        b.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(color: AppColors.primaryGreen.withOpacity(0.2)),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.black.withOpacity(0.4), Colors.black.withOpacity(0.1)],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(b.title, style: GoogleFonts.nunitoSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                            if (b.description != null && b.description!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(b.description!, style: GoogleFonts.nunitoSans(fontSize: 12, color: Colors.white70)),
+                              ),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                );
+              }
+              // fallback original placeholder style
               return Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primaryGreen,
-                      AppColors.primaryGreen.withOpacity(0.8),
-                    ],
+                    colors: [AppColors.primaryGreen, AppColors.primaryGreen.withOpacity(0.8)],
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      right: -20,
-                      top: -20,
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.1),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Special Offer',
-                            style: GoogleFonts.nunitoSans(
-                              fontSize: 12,
-                              color: Colors.white.withOpacity(0.8),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Up to 50% OFF\nHealthy Products',
-                            style: GoogleFonts.nunitoSans(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: AppColors.primaryGreen,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 8,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                            child: Text(
-                              'Shop Now',
-                              style: GoogleFonts.nunitoSans(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                child: const Center(child: Text('Banner', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
               );
             },
           ),
-
-          // Banner Indicator
           Positioned(
             bottom: 16,
             left: 20,
             child: SmoothPageIndicator(
               controller: _pageController,
-              count: _bannerImages.length,
-              effect: const WormEffect(
-                dotColor: Colors.white24,
-                activeDotColor: Colors.white,
-                dotHeight: 8,
-                dotWidth: 8,
-              ),
+              count: hasData ? _banners.length : count,
+              effect: const WormEffect(dotColor: Colors.white24, activeDotColor: Colors.white, radius: 8, dotHeight: 8, dotWidth: 8),
             ),
           ),
         ],

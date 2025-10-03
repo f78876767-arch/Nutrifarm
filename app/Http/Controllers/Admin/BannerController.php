@@ -27,7 +27,7 @@ class BannerController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'action_url' => 'nullable|string',
-            'is_active' => 'boolean',
+            'is_active' => 'required|in:0,1',
             'sort_order' => 'required|integer|min:0',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048'
         ]);
@@ -47,7 +47,7 @@ class BannerController extends Controller
                 'image_url' => $imageUrl,
                 'description' => $request->description,
                 'action_url' => $request->action_url,
-                'is_active' => $request->has('is_active'),
+                'is_active' => $request->boolean('is_active'),
                 'sort_order' => $request->sort_order,
             ]);
 
@@ -76,7 +76,7 @@ class BannerController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'action_url' => 'nullable|string',
-            'is_active' => 'boolean',
+            'is_active' => 'required|in:0,1',
             'sort_order' => 'required|integer|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048'
         ]);
@@ -86,7 +86,7 @@ class BannerController extends Controller
                 'title' => $request->title,
                 'description' => $request->description,
                 'action_url' => $request->action_url,
-                'is_active' => $request->has('is_active'),
+                'is_active' => $request->boolean('is_active'),
                 'sort_order' => $request->sort_order,
             ];
 

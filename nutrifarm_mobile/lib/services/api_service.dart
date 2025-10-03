@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kDebugMode;
 import '../models/product.dart';
 import '../models/jnt_models.dart';
+import '../models/banner.dart';
 
 class ApiService {
   // Base URL for your Laravel backend API
@@ -1024,6 +1025,29 @@ class ApiService {
     } catch (e) {
       if (kDebugMode) print('❌ Update order resi error: $e');
       if (e is ApiException) rethrow; throw ApiException('Network error update resi: $e');
+    }
+  }
+
+  // Get banners
+  static Future<List<BannerModel>> getBanners() async {
+    try {
+      final resp = await http.get(Uri.parse('$baseUrl/banners'), headers: headers).timeout(const Duration(seconds: 10));
+      if (resp.statusCode != 200) throw ApiException('Failed banners: ${resp.statusCode}');
+      final body = json.decode(resp.body);
+      List dataList;
+      if (body is List) {
+        dataList = body;
+      } else if (body is Map && body['data'] is List) {
+        dataList = body['data'];
+      } else {
+        return [];
+      }
+      return dataList.map((e) => BannerModel.fromJson(e as Map<String,dynamic>)).toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Banner fetch error: $e');
+      }
+      return [];
     }
   }
 }

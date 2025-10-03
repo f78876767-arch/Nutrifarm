@@ -543,7 +543,62 @@ For development and testing, you can use this authentication token:
 
 Use this token in the `Authorization` header: `Bearer 4|k6WiTK9a3RSMbUj51yxVJIqxKhVehj2xa8GpsHkh5769faec`
 
+# Dynamic Banner Integration
 
----
+The mobile app now fetches promotional banners from the backend instead of using static assets.
 
-**Integration Goal**: Replace all hardcoded product data with real API calls using this exact JSON structure and business logic rules.
+## Endpoint
+GET /api/banners
+Response shape:
+{
+  "success": true,
+  "data": [
+    {"id":7,"title":"Test","image_url":"http://127.0.0.1:8000/storage/banners/....png","description":"...","action_url":null,"is_active":true,"sort_order":1}
+  ]
+}
+
+The code also tolerates a plain array [] fallback.
+
+## Flutter Model
+lib/models/banner.dart (BannerModel) with fields:
+- id
+- title
+- imageUrl
+- description
+- actionUrl
+- isActive
+- sortOrder
+
+## Fetch Logic
+ApiService.getBanners() performs request and returns List<BannerModel>. On error returns empty list (UI shows placeholders).
+
+## UI Usage
+store_home_page_new.dart now:
+- Loads banners in initState via _fetchBanners()
+- Shows skeleton while loading
+- Falls back to gradient placeholder banners if empty
+- Uses Image.network for each banner with overlay text
+
+## Action URL
+Currently only displayed if needed later. You can add tap handling:
+```
+GestureDetector(onTap: () { if(b.actionUrl!=null) _openDeepLink(b.actionUrl!); }, child: ...)
+```
+
+## Localhost / Emulator Notes
+Android Emulator cannot access 127.0.0.1 of host. Use:
+- 10.0.2.2 for Android emulator
+- 127.0.0.1 or localhost for iOS simulator
+- Physical device: use your LAN IP (e.g. http://192.168.x.x:8000)
+Update ApiService.baseUrl accordingly (consider flavors or --dart-define).
+
+## Troubleshooting
+- Empty list: ensure at least one banner is_active=1 (DB check: select * from banners;)
+- Images not loading: run `php artisan storage:link` and access http://HOST/storage/banners/filename.png
+- CORS: Ensure config/cors.php allows GET from app origin
+- SSL: If using HTTPS backend, update image_url to https for mixed content on release builds.
+
+## Next Improvements (optional)
+- Add tap deep link handler
+- Cache banners locally (Hive) for offline
+- Pull-to-refresh to re-fetch banners
